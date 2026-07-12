@@ -1,5 +1,6 @@
 import Sidebar from "../../components/sidebar";
 import Link from "next/link";
+import { AuthGuard } from "../../components/auth-guard";
 
 const kpis = [
   { label: "Available", value: "128", color: "text-available", icon: "inventory_2", accent: "" },
@@ -18,6 +19,7 @@ const activities = [
 
 export default function DashboardPage() {
   return (
+    <AuthGuard>
     <div className="bg-fog min-h-screen flex">
       <Sidebar />
       <main className="md:ml-sidebar-width flex-1 flex flex-col">
@@ -120,5 +122,6 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+    </AuthGuard>
   );
 }
