@@ -386,7 +386,7 @@ export async function fetchAllocations(filters?: {
     if (filters?.assetId) query.assetId = toUuid(filters.assetId);
     if (filters?.status) query.status = filters.status.toUpperCase();
 
-    const data = await apiClient.get<any>('/allocations', { query });
+    const data = await apiClient.get<any>('/allocation', { query });
     const items: any[] = Array.isArray(data) ? data : (data?.items ?? data?.data ?? []);
     return ok(items.map(mapAllocationToFrontend));
   } catch (e) {
@@ -414,7 +414,7 @@ export async function createAllocation(payload: any): Promise<ApiResponse<any>> 
       }
     }
 
-    const data = await apiClient.post<any>('/allocations', {
+    const data = await apiClient.post<any>('/allocation', {
       assetId: toUuid(payload.asset_id),
       employeeId: toUuid(employeeId),
       expectedReturnDate: payload.expected_return_date ? new Date(payload.expected_return_date).toISOString() : undefined,
@@ -456,7 +456,7 @@ export async function fetchBookings(date?: string): Promise<ApiResponse<any[]>> 
     const query: Record<string, string> = {};
     if (date) query.date = date;
 
-    const data = await apiClient.get<any>('/bookings', { query });
+    const data = await apiClient.get<any>('/booking', { query });
     const items: any[] = Array.isArray(data) ? data : (data?.items ?? data?.data ?? []);
     return ok(items.map(mapBookingToFrontend));
   } catch (e) {
@@ -466,7 +466,7 @@ export async function fetchBookings(date?: string): Promise<ApiResponse<any[]>> 
 
 export async function createBooking(payload: any): Promise<ApiResponse<any>> {
   try {
-    const data = await apiClient.post<any>('/bookings', {
+    const data = await apiClient.post<any>('/booking', {
       assetId: toUuid(payload.asset_id),
       employeeId: toUuid(payload.booker_id),
       startTime: payload.start_time ? new Date(payload.start_time).toISOString() : undefined,
@@ -616,7 +616,7 @@ export async function fetchEmployees(): Promise<ApiResponse<any[]>> {
 
 export async function fetchActivityLog(limit = 50): Promise<ApiResponse<any[]>> {
   try {
-    const data = await apiClient.get<any>('/users/activity', {
+    const data = await apiClient.get<any>('/dashboard/activity', {
       query: { limit: limit.toString() },
     });
     const items: any[] = Array.isArray(data) ? data : (data?.items ?? data?.data ?? []);

@@ -690,16 +690,40 @@ Full deployment details: [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 After running `npm run prisma:seed`, these accounts are available (all use password `Password123!`):
 
-| Email                   | Name          | Role            | Department |
-| ----------------------- | ------------- | --------------- | ---------- |
-| admin@assetflow.io      | Aria Nolan    | ADMIN           | IT         |
-| manager@assetflow.io    | Marcus Reed   | ASSET_MANAGER   | Operations |
-| ithead@assetflow.io     | Priya Shah    | DEPARTMENT_HEAD | IT         |
-| hrhead@assetflow.io     | Diego Marin   | DEPARTMENT_HEAD | HR         |
-| liam@assetflow.io       | Liam Carter   | EMPLOYEE        | IT         |
-| sofia@assetflow.io      | Sofia Rossi   | EMPLOYEE        | HR         |
-| noah@assetflow.io       | Noah Kim      | EMPLOYEE        | Operations |
-| emma@assetflow.io       | Emma Novak    | EMPLOYEE        | Finance    |
+| Email                   | Name          | Role            | Department | Access Level |
+| ----------------------- | ------------- | --------------- | ---------- | ------------ |
+| admin@assetflow.io      | Aria Nolan    | ADMIN           | IT         | Full system access — all modules, all data |
+| manager@assetflow.io    | Marcus Reed   | ASSET_MANAGER   | Operations | Assets, allocations, maintenance, audit, reports |
+| ithead@assetflow.io     | Priya Shah    | DEPARTMENT_HEAD | IT         | Department-scoped: assets, allocations, bookings, reports |
+| hrhead@assetflow.io     | Diego Marin   | DEPARTMENT_HEAD | HR         | Department-scoped: assets, allocations, bookings, reports |
+| liam@assetflow.io       | Liam Carter   | EMPLOYEE        | IT         | View assets, create bookings, personal allocations |
+| sofia@assetflow.io      | Sofia Rossi   | EMPLOYEE        | HR         | View assets, create bookings, personal allocations |
+| noah@assetflow.io       | Noah Kim      | EMPLOYEE        | Operations | View assets, create bookings, personal allocations |
+| emma@assetflow.io       | Emma Novak    | EMPLOYEE        | Finance    | View assets, create bookings, personal allocations |
+
+### Recommended Demo Flow
+
+1. **Login as Admin** (`admin@assetflow.io` / `Password123!`) — full visibility
+2. **Dashboard** — view live KPIs (Available, Allocated, Maintenance, Bookings, Overdue)
+3. **Assets** — browse 12 seeded assets across 5 categories with status badges
+4. **Allocation** — view active/overdue allocations (1 overdue flagged)
+5. **Booking** — see scheduled resource bookings for meeting rooms
+6. **Maintenance** — review open requests with priority and status tracking
+7. **Audit** — inspect the ongoing Q1 2026 audit cycle with discrepancy
+8. **Reports** — generate utilization, maintenance, and department reports
+9. **AI Assistant** — click the floating bot icon (bottom-right) for Grok AI chat
+10. **Activity Log** — see all system-wide actions with timestamps
+11. **Role switching** — log in as `liam@assetflow.io` to see reduced Employee view
+
+### Seeded Data Summary
+
+- 12 assets across 5 categories (Laptops, Monitors, Projectors, Furniture, Vehicles)
+- 4 departments with hierarchy (IT, HR, Operations, Finance under Head Office)
+- 3 allocations (2 active, 1 overdue)
+- 2 bookings (1 confirmed meeting room, 1 pending projector)
+- 2 maintenance requests (1 in-progress, 1 resolved)
+- 1 audit cycle with 3 records (2 verified, 1 discrepancy)
+- Notifications, dashboard widgets, and organization settings
 
 ---
 
@@ -712,7 +736,14 @@ After running `npm run prisma:seed`, these accounts are available (all use passw
 | `/forgot-password`  | Request password reset email               |
 | `/reset-password`   | Complete password reset with token          |
 | `/change-password`  | Change password (authenticated)            |
-| `/dashboard`        | Role-scoped KPI dashboard                  |
+| `/dashboard`        | Role-scoped KPI dashboard with live data   |
+| `/assets`           | Asset directory with search and filtering  |
+| `/allocation`       | Allocation & transfer management           |
+| `/booking`          | Resource booking with calendar view        |
+| `/maintenance`      | Maintenance request tracking               |
+| `/audit`            | Audit cycle management and records         |
+| `/reports`          | Analytics and report generation            |
+| `/activity`         | System-wide activity log with pagination   |
 | `/organization`     | Organization and department management     |
 | `/admin/users`      | User management (Admin only)               |
 | `/profile`          | User profile and preferences               |

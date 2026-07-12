@@ -37,15 +37,28 @@ export default function DashboardPage() {
 
     if (kpiRes.ok && kpiRes.data) {
       const d = kpiRes.data;
+      // Backend returns { kpis: {...}, charts: { assetsByStatus: {...}, ... } }
+      const kpis = d.kpis ?? d;
+      const charts = d.charts ?? {};
+      const assetsByStatus = charts.assetsByStatus ?? {};
+      const bookingsByStatus = charts.bookingsByStatus ?? {};
+
+      const available = assetsByStatus.AVAILABLE ?? kpis.available ?? d.assets_available ?? 0;
+      const allocated = assetsByStatus.ALLOCATED ?? kpis.allocated ?? d.assets_allocated ?? 0;
+      const openMaint = kpis.openMaintenance ?? d.maintenance_today ?? d.maintenance ?? 0;
+      const activeBookings = (bookingsByStatus.ACTIVE ?? 0) + (bookingsByStatus.CONFIRMED ?? 0) + (kpis.upcomingBookings ?? d.active_bookings ?? d.bookings ?? 0);
+      const pendingTransfers = d.pending_transfers ?? d.transfers ?? 0;
+      const overdueAllocations = kpis.overdueAllocations ?? d.overdue_returns ?? d.overdue ?? 0;
+
       setKpis([
-        { label: "Available",         value: String(d.assets_available   ?? d.available   ?? 0), color: "text-available", icon: "inventory_2",     accent: "" },
-        { label: "Allocated",         value: String(d.assets_allocated   ?? d.allocated   ?? 0), color: "text-allocated", icon: "person_check",    accent: "" },
-        { label: "Maintenance Today", value: String(d.maintenance_today  ?? d.maintenance ?? 0), color: "text-pending",   icon: "build",           accent: "border-l-4 border-l-pending" },
-        { label: "Active Bookings",   value: String(d.active_bookings    ?? d.bookings    ?? 0), color: "text-ink",       icon: "event",           accent: "" },
-        { label: "Pending Transfers", value: String(d.pending_transfers  ?? d.transfers   ?? 0), color: "text-ink",       icon: "sync_alt",        accent: "" },
-        { label: "Upcoming Returns",  value: String(d.upcoming_returns   ?? d.returns     ?? 0), color: "text-ink",       icon: "keyboard_return", accent: "" },
+        { label: "Available",         value: String(available), color: "text-available", icon: "inventory_2",     accent: "" },
+        { label: "Allocated",         value: String(allocated), color: "text-allocated", icon: "person_check",    accent: "" },
+        { label: "Maintenance Today", value: String(openMaint), color: "text-pending",   icon: "build",           accent: "border-l-4 border-l-pending" },
+        { label: "Active Bookings",   value: String(activeBookings), color: "text-ink",       icon: "event",           accent: "" },
+        { label: "Pending Transfers", value: String(pendingTransfers), color: "text-ink",       icon: "sync_alt",        accent: "" },
+        { label: "Upcoming Returns",  value: String(overdueAllocations), color: "text-ink",       icon: "keyboard_return", accent: "" },
       ]);
-      setOverdueCount(d.overdue_returns ?? d.overdue ?? 0);
+      setOverdueCount(overdueAllocations);
     }
 
     if (actRes.ok && actRes.data) setActivities(actRes.data);
