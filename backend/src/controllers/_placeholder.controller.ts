@@ -1,23 +1,23 @@
-import type { Request, Response } from 'express';
+import type { RequestHandler } from 'express';
 import { HTTP_STATUS } from '../constants/http';
 import { MESSAGES } from '../constants/messages';
 import { sendError } from '../utils/response';
 
 /**
- * Placeholder controller factory. Every feature controller in this prompt
- * exports getAll/getById/create/update/delete that return 501 Not Implemented
- * so real handlers can be plugged in by subsequent prompts without touching
- * route registration.
+ * Placeholder controller factory. Every feature controller that hasn't yet
+ * been implemented exports getAll/getById/create/update/delete that return
+ * 501 Not Implemented so route registration remains intact while real handlers
+ * are added incrementally by later prompts.
  */
 export interface PlaceholderController {
-  getAll: (req: Request, res: Response) => void;
-  getById: (req: Request, res: Response) => void;
-  create: (req: Request, res: Response) => void;
-  update: (req: Request, res: Response) => void;
-  delete: (req: Request, res: Response) => void;
+  getAll: RequestHandler;
+  getById: RequestHandler;
+  create: RequestHandler;
+  update: RequestHandler;
+  delete: RequestHandler;
 }
 
-function notImplemented(feature: string, operation: string): (req: Request, res: Response) => void {
+function notImplemented(feature: string, operation: string): RequestHandler {
   return (_req, res) =>
     sendError(
       res,

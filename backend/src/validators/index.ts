@@ -1,6 +1,8 @@
 /**
- * Validators barrel. Concrete feature validators are namespaced under
- * subfolders so imports remain scoped, e.g.:
- *   import { paginationQuerySchema } from '@/validators';
+ * Validators barrel. Feature validators are namespaced under subfolders so
+ * imports remain scoped.
  */
 export * from './common';
+export * as authValidators from './auth';
+export * as usersValidators from './users';
+export * as departmentsValidators from './departments';

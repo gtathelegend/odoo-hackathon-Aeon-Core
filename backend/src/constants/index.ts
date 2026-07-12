@@ -4,6 +4,7 @@ export * from './roles';
 export * from './permissions';
 export * from './status';
 export * from './routes';
+export * from './asset-lifecycle';
 
 /** Service identity — surfaced by /version and Swagger. */
 export const SERVICE_NAME = 'AssetFlow API';

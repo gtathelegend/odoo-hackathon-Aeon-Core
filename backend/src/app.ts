@@ -1,3 +1,4 @@
+import path from 'path';
 import express from 'express';
 import type { Application } from 'express';
 import helmet from 'helmet';
@@ -5,6 +6,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
 
+import { env } from './config/env';
 import { serverConfig } from './config/server';
 import { swaggerSpec, SWAGGER_PATH } from './config/swagger';
 import { API_PREFIX, SERVICE_NAME, SERVICE_VERSION } from './constants';
@@ -32,7 +34,8 @@ export function createApp(): Application {
 
   // --- Security & infrastructure middleware ---
   app.use(requestIdMiddleware);
-  app.use(helmet());
+  // Helmet CORS-safe defaults; relax CORP so /uploads assets embed in the frontend.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(corsMiddleware);
   app.use(compression());
   app.use(express.json({ limit: serverConfig.bodyLimit }));
@@ -63,6 +66,17 @@ export function createApp(): Application {
   app.get('/api/docs.json', (_req, res) => {
     res.json(swaggerSpec);
   });
+
+  // --- Static file serving for uploaded assets (attachments, QR codes) ---
+  const uploadsRoot = path.resolve(process.cwd(), env.UPLOAD_DIR);
+  app.use(
+    '/uploads',
+    express.static(uploadsRoot, {
+      fallthrough: true,
+      immutable: false,
+      maxAge: '1d',
+    }),
+  );
 
   // --- Versioned API routes ---
   app.use(API_PREFIX, apiRouter);

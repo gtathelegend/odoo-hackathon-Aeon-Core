@@ -2,6 +2,8 @@ export { authController } from './auth.controller';
 export { usersController } from './users.controller';
 export { departmentsController } from './departments.controller';
 export { assetsController } from './assets.controller';
+export { assetCategoryController } from './asset-category.controller';
+export { assetLocationController } from './asset-location.controller';
 export { allocationController } from './allocation.controller';
 export { bookingController } from './booking.controller';
 export { maintenanceController } from './maintenance.controller';

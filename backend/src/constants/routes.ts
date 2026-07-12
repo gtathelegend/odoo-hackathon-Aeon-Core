@@ -7,6 +7,8 @@ export const ROUTES = {
   USERS: '/users',
   DEPARTMENTS: '/departments',
   ASSETS: '/assets',
+  ASSET_CATEGORIES: '/asset-categories',
+  ASSET_LOCATIONS: '/asset-locations',
   ALLOCATION: '/allocation',
   BOOKING: '/booking',
   MAINTENANCE: '/maintenance',

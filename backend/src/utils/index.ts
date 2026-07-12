@@ -10,3 +10,4 @@ export * from './catchAsync';
 export * from './date';
 export * from './jwt';
 export * from './validators';
+export * from './asset-tag';

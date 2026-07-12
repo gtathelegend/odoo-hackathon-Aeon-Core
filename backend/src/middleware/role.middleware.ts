@@ -1,17 +1,33 @@
 import type { NextFunction, RequestHandler, Response } from 'express';
-import type { AuthenticatedRequest } from '../interfaces';
+import type { AuthenticatedRequest } from '../interfaces/authenticated-request.interface';
 import type { Role } from '../constants/roles';
+import { hasRoleAtLeast } from '../constants/roles';
+import { AuthenticationError, AuthorizationError } from '../utils/errors';
 
 /**
- * Role-based authorization middleware factory placeholder.
- * Enforcement logic is implemented in a later prompt.
+ * Require the authenticated user to hold one of the listed roles.
+ * `req.user` must have been populated by `authMiddleware` upstream.
  */
-export function requireRole(..._roles: Role[]): RequestHandler {
-  return (_req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
-    // TODO: check req.user.role against allowed roles (later prompt).
+export function requireRole(...roles: Role[]): RequestHandler {
+  return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
+    if (!req.user) return next(new AuthenticationError('Authentication required'));
+    if (!roles.includes(req.user.role)) {
+      return next(new AuthorizationError('You do not have permission to perform this action'));
+    }
     next();
   };
 }
 
-/** Alias for teams that prefer the `authorize` naming. */
+/** Require the authenticated user's role to be at least `minRole` in the hierarchy. */
+export function requireMinRole(minRole: Role): RequestHandler {
+  return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
+    if (!req.user) return next(new AuthenticationError('Authentication required'));
+    if (!hasRoleAtLeast(req.user.role, minRole)) {
+      return next(new AuthorizationError('You do not have permission to perform this action'));
+    }
+    next();
+  };
+}
+
+/** Alias so route files can read expressively: `router.get(..., authorize(ROLES.ADMIN))`. */
 export const authorize = requireRole;
