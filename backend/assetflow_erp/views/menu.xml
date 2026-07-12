@@ -1,0 +1,10 @@
+<odoo>
+    <menuitem id="menu_assetflow_root" name="AssetFlow" sequence="10"/>
+    <menuitem id="menu_assetflow_dashboard" name="Dashboard" parent="menu_assetflow_root" action="action_kpi_dashboard"/>
+    <menuitem id="menu_assetflow_org_setup" name="Organization Setup" parent="menu_assetflow_root" groups="assetflow_erp.group_admin"/>
+    <menuitem id="menu_assetflow_assets" name="Assets" parent="menu_assetflow_root" action="action_asset_asset"/>
+    <menuitem id="menu_assetflow_allocations" name="Allocation &amp; Transfer" parent="menu_assetflow_root" action="action_asset_allocation"/>
+    <menuitem id="menu_assetflow_bookings" name="Resource Booking" parent="menu_assetflow_root" action="action_asset_booking"/>
+    <menuitem id="menu_assetflow_maintenance" name="Maintenance" parent="menu_assetflow_root" action="action_maintenance_request"/>
+    <menuitem id="menu_assetflow_audit" name="Audit" parent="menu_assetflow_root" action="action_audit_cycle"/>
+</odoo>

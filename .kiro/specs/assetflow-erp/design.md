@@ -528,5 +528,456 @@ CREATE INDEX idx_activity_log_timestamp ON mail_message(date) WHERE model IN ('a
 
 *A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
 
-Before defining correctness properties, I need to analyze the acceptance criteria to determine which are suitable for property-based testing.
+The following correctness properties are derived directly from the requirements and should hold across all valid executions of the system.
+
+### Identity and Access Properties
+
+1. **Role monotonicity**: A user may perform only actions granted by their active security groups and record rules at request time.
+2. **Promotion exclusivity**: Only users in `assetflow.group_admin` may change another user's AssetFlow role.
+3. **Signup safety**: Self-service signup always creates a base Employee account and never grants elevated roles.
+4. **Session safety**: Expired or inactive sessions are rejected before any protected controller or RPC action executes.
+5. **Authentication privacy**: Invalid login attempts always return a generic error response that does not reveal whether an email exists.
+
+### Data Integrity Properties
+
+1. **Asset identity uniqueness**: `asset_tag` and `serial_number` remain globally unique for the lifetime of the database.
+2. **Immutable audit evidence**: Activity log records and closed audit-cycle marks are append-only and cannot be deleted through the UI or ORM.
+3. **Reference validity**: Assets can reference only existing active categories, valid departments, and valid holders.
+4. **Soft-retention policy**: Core operational records are archived or state-transitioned instead of physically deleted.
+
+### Lifecycle and Workflow Properties
+
+1. **State graph validity**: Every asset state transition must belong to the approved lifecycle transition graph.
+2. **Terminal disposal**: Assets in `disposed` have no outgoing transitions.
+3. **Single active custody**: An asset may have at most one active allocation at a time.
+4. **Booking exclusivity**: For any bookable asset, no two bookings in `upcoming` or `ongoing` may overlap.
+5. **Maintenance singularity**: An asset may have at most one open maintenance request at a time.
+6. **Transfer closure correctness**: Re-allocation closes the previous active allocation before creating the successor allocation.
+7. **Audit scope correctness**: Auditors can mark only assets included in the cycle scope and only while the cycle is open.
+
+### Temporal Properties
+
+1. **Overdue detection**: Active allocations become overdue once `expected_return_date < current_date`.
+2. **Booking time progression**: Booking status evolves monotonically from `upcoming` to `ongoing` to `completed`, unless cancelled before start.
+3. **Reminder lead time**: Booking reminders are sent no later than 30 minutes before the scheduled start, with retries on failure.
+4. **Notification eventuality**: A notifiable event either produces a delivered notification or a logged failed notification after bounded retries.
+
+### Concurrency Properties
+
+1. **First-writer wins for asset transitions**: Concurrent requests that target the same asset are serialized so only the first valid transition succeeds.
+2. **Conflict visibility**: If a request loses a race because the underlying record changed, the caller receives the current state and conflict context.
+3. **Sequence consistency**: Asset tag generation is atomic and gap-tolerant, but never duplicates issued tags.
+
+---
+
+## Supporting Models and Services
+
+### User and Role Extensions (`res.users`)
+
+**Purpose**: Extend Odoo users with AssetFlow role metadata, lockout handling, and notification preferences.
+
+**Key Fields**:
+- `assetflow_role`: Selection - `employee`, `department_head`, `asset_manager`, `admin`
+- `failed_login_count`: Integer
+- `locked_until`: Datetime
+- `last_activity_at`: Datetime
+- `employee_id`: Many2one('hr.employee')
+
+**Key Methods**:
+- `_check_assetflow_lockout()`: Blocks authentication while account is temporarily locked
+- `_increment_failed_logins()`: Tracks failed attempts and sets `locked_until` on threshold breach
+- `_reset_failed_logins()`: Clears counters on successful authentication
+- `write()`: Applies role changes by updating implied groups and invalidating relevant caches
+
+### Department Extension (`hr.department`)
+
+**Purpose**: Support hierarchy validation, active/inactive controls, and department-head assignment.
+
+**Key Fields**:
+- `assetflow_head_user_id`: Many2one('res.users')
+- `active`: Boolean
+- `parent_id`: Many2one('hr.department')
+- `hierarchy_depth`: Integer, computed, stored
+
+**Key Methods**:
+- `_check_no_cycle()`: Prevent circular parent chains
+- `_check_max_depth()`: Enforce maximum hierarchy depth of 5
+- `action_deactivate()`: Warn on active allocations and block new assignments
+
+### Employee Extension (`hr.employee`)
+
+**Purpose**: Maintain department assignment, activation status, and pending reassignment visibility.
+
+**Key Fields**:
+- `user_id`: Many2one('res.users')
+- `department_id`: Many2one('hr.department')
+- `active`: Boolean
+- `pending_reassignment_asset_ids`: One2many('asset.asset', compute=...)
+
+**Key Methods**:
+- `action_deactivate()`: Revokes access, cancels upcoming bookings, and flags allocated assets for reassignment
+- `_check_department_is_active()`: Prevents assignment into inactive departments
+
+### Activity Log Service
+
+**Purpose**: Standardize structured event capture across model actions and scheduled jobs.
+
+**Implementation**:
+- Dedicated model `asset.activity.log`
+- Light wrapper service `asset.activity.logger`
+- Odoo mail/thread hooks only for user-facing chatter, not as the source of truth for immutable audit logging
+
+**Stored Fields**:
+- `actor_id`
+- `action_type`
+- `target_model`
+- `target_res_id`
+- `previous_state`
+- `new_state`
+- `metadata_json`
+- `occurred_at`
+
+### Notification Service
+
+**Purpose**: Deliver in-app notifications with retry support and unread counts.
+
+**Implementation**:
+- Model `asset.notification`
+- Bus notifications for near-real-time refresh
+- Retry cron for failed deliveries
+
+**Stored Fields**:
+- `recipient_id`
+- `event_type`
+- `title`
+- `body`
+- `target_model`
+- `target_res_id`
+- `status` (`pending`, `sent`, `failed`)
+- `read_at`
+- `retry_count`
+
+### Report Query Services
+
+**Purpose**: Encapsulate analytics queries so reports stay testable and performant.
+
+**Service Classes**:
+- `asset.report.utilization`
+- `asset.report.maintenance`
+- `asset.report.retirement`
+- `asset.report.department_summary`
+- `asset.report.booking_heatmap`
+
+Each service returns normalized data structures that can be rendered as:
+- list/tree views in Odoo
+- QWeb PDF exports
+- CSV export streams
+
+---
+
+## Key Workflows
+
+### Authentication and Session Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Auth Controller
+    participant R as res.users
+    participant S as Session Store
+
+    U->>C: Submit email + password
+    C->>R: Validate email format and lockout state
+    alt Locked account
+        R-->>C: locked_until active
+        C-->>U: Generic locked message
+    else Credentials valid
+        C->>S: Create session
+        R->>R: Reset failed attempts
+        C-->>U: Redirect to KPI dashboard
+    else Credentials invalid
+        R->>R: Increment failed attempts
+        C-->>U: Generic authentication error
+    end
+```
+
+### Asset Allocation Flow
+
+```mermaid
+sequenceDiagram
+    participant M as Asset Manager
+    participant A as asset.asset
+    participant CE as Conflict Engine
+    participant AL as asset.allocation
+    participant N as Notification Service
+
+    M->>AL: Create allocation request
+    AL->>A: Lock asset row and validate state
+    alt Asset available
+        AL->>AL: Create active allocation
+        A->>A: Transition state to allocated
+        AL->>N: Notify holder and manager
+        AL-->>M: Success
+    else Asset unavailable
+        AL->>CE: Build allocation conflict payload
+        CE-->>M: Show transfer/different asset options
+    end
+```
+
+### Booking Conflict Resolution Flow
+
+```mermaid
+sequenceDiagram
+    participant E as Employee
+    participant B as asset.booking
+    participant CE as Conflict Engine
+    participant N as Notification Service
+
+    E->>B: Request booking slot
+    B->>B: Validate future time and duration
+    B->>B: Check overlap domain
+    alt No overlap
+        B->>B: Create booking as upcoming
+        B->>N: Queue reminder
+        B-->>E: Booking confirmed
+    else Overlap detected
+        B->>CE: Compute next available slot
+        CE-->>E: Conflict details + actionable options
+    end
+```
+
+### Audit Closure Flow
+
+```mermaid
+sequenceDiagram
+    participant AM as Admin/Asset Manager
+    participant AC as audit.cycle
+    participant MK as audit.mark
+    participant LG as Activity Log
+    participant N as Notification Service
+
+    AM->>AC: Close cycle
+    AC->>MK: Load in-scope marks
+    AC->>AC: Build discrepancy report
+    AC->>AC: Update missing assets to lost where allowed
+    AC->>AC: Mark damaged asset conditions
+    AC->>LG: Persist closure event
+    AC->>N: Notify auditors and creator
+    AC-->>AM: Cycle closed and locked
+```
+
+---
+
+## Scheduled Jobs and Automation
+
+The system relies on Odoo scheduled actions (`ir.cron`) for time-based behavior.
+
+| Job | Frequency | Responsibility |
+| --- | --- | --- |
+| `assetflow_cron_check_overdue_allocations` | Daily | Mark allocations overdue and notify stakeholders |
+| `assetflow_cron_transition_bookings` | Every 5 minutes | Move bookings between upcoming, ongoing, completed |
+| `assetflow_cron_send_booking_reminders` | Every 15 minutes | Send reminders for bookings starting within 30 minutes |
+| `assetflow_cron_retry_notifications` | Every 1 minute | Retry failed/pending notification deliveries up to 3 times |
+| `assetflow_cron_session_timeout_cleanup` | Every 10 minutes | Expire stale sessions inactive for more than 30 minutes |
+| `assetflow_cron_dashboard_cache_refresh` | Every 5 minutes | Warm KPI aggregates for heavy admin views |
+| `assetflow_cron_retention_guard` | Daily | Protect 12-month retention windows and archive eligible records |
+
+### Automation Design Notes
+
+- Booking transition jobs must be idempotent so reruns do not create duplicate logs or notifications.
+- Notification retries must stop after 3 failed attempts and create a corresponding activity log event.
+- Overdue allocation detection uses date comparison in organization timezone, while booking jobs use full datetimes.
+
+---
+
+## Security and Authorization Design
+
+### Group Matrix
+
+| Capability | Employee | Department Head | Asset Manager | Admin |
+| --- | --- | --- | --- | --- |
+| View own dashboard KPIs | Yes | Yes | Yes | Yes |
+| Manage departments and categories | No | No | No | Yes |
+| Register assets | No | No | Yes | Yes |
+| Allocate and return assets | No | Approve transfer only | Yes | Yes |
+| Book shared assets | Yes | Yes | Yes | Yes |
+| Create maintenance requests | Yes | Yes | Yes | Yes |
+| Approve maintenance | No | No | Yes | Yes |
+| Create audit cycles | No | No | Yes | Yes |
+| View reports | Own/department scoped | Department scoped | Global | Global |
+| Query activity logs | No | No | Yes | Yes |
+| Promote roles | No | No | No | Yes |
+
+### Record Rule Strategy
+
+- Employees can read only their own allocations, bookings, maintenance requests, notifications, and assets allocated to them.
+- Department Heads can read records tied to their department, including department-held assets and employee bookings within their department.
+- Asset Managers and Admins can read all asset domain records.
+- Closed audit cycles remain readable but non-writable to all authorized roles.
+
+### Controller and RPC Hardening
+
+- Portal and signup routes validate role-safe payloads and ignore any elevated role parameters.
+- Sensitive button methods re-check permissions server-side even if hidden in the UI.
+- Search domains supplied by clients are intersected with record-rule-safe domains before execution.
+
+---
+
+## Reporting and Analytics Design
+
+### Utilization Trends
+
+- Source data: allocation periods plus booking periods
+- Formula: `(allocated_time + reserved_time) / total_range_time * 100`
+- Granularity: weekly minimum, with optional monthly aggregation for larger ranges
+
+### Maintenance Frequency
+
+- Source data: maintenance requests in `resolved` status
+- Grouping: by category, asset, and priority
+- Output: trend chart and exportable table
+
+### Assets Due for Maintenance
+
+- Rule 1: `today - last_resolved_maintenance_date > category.maintenance_interval_days`
+- Rule 2: no resolved maintenance and `today - acquisition_date > 90 days`
+
+### Assets Due for Retirement
+
+- Rule 1: asset age exceeds `category.useful_life_years`
+- Rule 2: current condition is `poor` or `damaged`
+
+### Booking Heatmap
+
+- Time buckets: weekday x hour-of-day
+- Metric: count of bookings intersecting each bucket
+- Scope: bookable assets only
+
+### Export Strategy
+
+- CSV: streaming generation for large datasets
+- PDF: QWeb templates rendered asynchronously if row count exceeds interactive threshold
+- Exports inherit the same role-based filters as on-screen views
+
+---
+
+## Error Handling and User Experience
+
+### Validation Principles
+
+1. Reject invalid writes as early as possible at the model layer.
+2. Preserve user-entered form data whenever a business-rule error occurs.
+3. Prefer actionable conflict dialogs over hard-stop validation messages for allocation and booking conflicts.
+4. Convert low-level SQL uniqueness errors into field-specific user messages.
+
+### Error Categories
+
+| Category | Example | User Response |
+| --- | --- | --- |
+| Validation error | Duplicate serial number | Highlight offending field with corrective guidance |
+| Authorization error | Unauthorized role promotion | Access denied and log attempt |
+| Conflict error | Booking overlap | Show conflicting record and next actions |
+| Concurrency error | Asset changed during save | Refresh state and invite retry |
+| Delivery failure | Notification send failure | Background retry, then log failure |
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+- Asset tag generation and uniqueness
+- Lifecycle transition graph enforcement
+- Overlap validator edge cases, including adjacent bookings
+- Department hierarchy cycle and depth checks
+- Maintenance workflow progression and open-request exclusivity
+- Audit closure discrepancy generation
+
+### Integration Tests
+
+- Signup, login, lockout, and session-timeout flows
+- Role promotion and permission refresh behavior
+- Allocation conflict to transfer-request handoff
+- Booking reminder scheduling and automatic status transitions
+- Employee deactivation cascade behavior
+- Notification retry and activity-log creation
+
+### Security Tests
+
+- Record-rule isolation by role
+- Forbidden controller and RPC access attempts
+- Protection against self-promotion and self-deactivation
+- Closed-audit immutability
+
+### Performance Tests
+
+- Asset directory search under realistic inventory size
+- KPI dashboard refresh under global admin scope
+- Report exports within 30-second SLA for supported datasets
+- Booking overlap checks under dense reservation schedules
+
+### Property-Based Tests
+
+- Randomized state-transition attempts always preserve valid lifecycle graph
+- Randomized booking intervals never allow overlapping confirmed bookings
+- Randomized department trees never exceed depth or contain cycles
+- Randomized transfer sequences never create more than one active allocation per asset
+
+---
+
+## Deployment, Migration, and Operations
+
+### Installation Dependencies
+
+- Odoo apps: `base`, `mail`, `hr`, `web`
+- Optional app for advanced reporting UX: `board`
+
+### Data Initialization
+
+- Seed security groups and access rules
+- Create the `asset.asset.tag` sequence starting at `AF-0001`
+- Register scheduled actions and default notification templates
+
+### Migration Notes
+
+- Preserve all allocation, maintenance, audit, and activity-log records across module upgrades
+- Use migration scripts for any selection-value changes affecting lifecycle states or report logic
+- Avoid destructive schema changes to immutable audit tables
+
+### Observability
+
+- Log failed cron jobs with model/action context
+- Track notification queue depth and retry counts
+- Expose admin diagnostics for overdue job executions and dashboard cache freshness
+
+---
+
+## Requirement Traceability
+
+| Requirement | Primary Design Components |
+| --- | --- |
+| 1. User Authentication | `res.users` extension, auth controller, session cleanup cron |
+| 2. Role-Based Access Control | security groups, access CSV, record rules, role sync service |
+| 3. KPI Dashboard | `kpi.dashboard`, role-based aggregation domains, bus refresh |
+| 4. Department Management | inherited `hr.department`, hierarchy constraints, admin views |
+| 5. Asset Category Management | `asset.category`, custom field model, deactivation rules |
+| 6. Employee Directory | inherited `hr.employee`, deactivation cascade, admin list views |
+| 7. Asset Registration | `asset.asset`, sequence, attachment validation |
+| 8. Asset Directory & Search | indexed search fields, role-filtered views, full history tabs |
+| 9. Asset Lifecycle State Machine | transition graph, row locking, activity logging |
+| 10. Asset Allocation | `asset.allocation`, overdue cron, conflict engine |
+| 11. Transfer Workflow | `asset.transfer`, self-approval guard, re-allocation logic |
+| 12. Resource Booking | `asset.booking`, overlap validator, reminders and transition crons |
+| 13. Maintenance Workflow | `maintenance.request`, technician assignment flow |
+| 14. Audit Cycle | `audit.cycle`, `audit.mark`, discrepancy report generator |
+| 15. Reports & Analytics | report services, CSV/PDF exports, scoped analytics |
+| 16. Activity Logs & Notifications | `asset.activity.log`, `asset.notification`, retry cron |
+| 17. Conflict Engine | `conflict.resolver`, slot suggestion algorithm, prefilled actions |
+| 18. Data Integrity & Constraints | SQL constraints, ORM guards, immutable/soft-delete policies |
+
+---
+
+## Summary
+
+This design translates the AssetFlow requirements into an Odoo-native architecture centered on strong model invariants, role-aware visibility, scheduled automation, and a guided conflict-resolution experience. The system intentionally pushes core business rules into models, security rules, and background jobs so that the same integrity guarantees hold across forms, controllers, imports, and automated processes.
 

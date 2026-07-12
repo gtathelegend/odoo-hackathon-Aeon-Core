@@ -1,0 +1,16 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_asset_activity_log_admin,asset.activity.log admin,model_asset_activity_log,assetflow_erp.group_asset_manager,1,0,1,0
+access_asset_notification_user,asset.notification user,model_asset_notification,assetflow_erp.group_employee,1,1,1,0
+access_asset_category_admin,asset.category admin,model_asset_category,assetflow_erp.group_admin,1,1,1,0
+access_asset_category_field_admin,asset.category.field admin,model_asset_category_field,assetflow_erp.group_admin,1,1,1,0
+access_asset_asset_employee,asset.asset employee,model_asset_asset,assetflow_erp.group_employee,1,0,0,0
+access_asset_asset_manager,asset.asset manager,model_asset_asset,assetflow_erp.group_asset_manager,1,1,1,0
+access_asset_allocation_user,asset.allocation user,model_asset_allocation,assetflow_erp.group_employee,1,0,0,0
+access_asset_allocation_manager,asset.allocation manager,model_asset_allocation,assetflow_erp.group_asset_manager,1,1,1,0
+access_asset_transfer_user,asset.transfer user,model_asset_transfer,assetflow_erp.group_employee,1,1,1,0
+access_asset_booking_user,asset.booking user,model_asset_booking,assetflow_erp.group_employee,1,1,1,0
+access_maintenance_request_user,maintenance.request user,model_maintenance_request,assetflow_erp.group_employee,1,1,1,0
+access_audit_cycle_manager,audit.cycle manager,model_audit_cycle,assetflow_erp.group_asset_manager,1,1,1,0
+access_audit_mark_manager,audit.mark manager,model_audit_mark,assetflow_erp.group_asset_manager,1,1,1,0
+access_kpi_dashboard_user,kpi.dashboard user,model_kpi_dashboard,assetflow_erp.group_employee,1,0,1,0
+access_conflict_resolver_user,conflict.resolver user,model_conflict_resolver,assetflow_erp.group_employee,1,1,1,0

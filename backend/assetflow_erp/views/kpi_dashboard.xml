@@ -1,0 +1,28 @@
+<odoo>
+    <record id="view_kpi_dashboard_form" model="ir.ui.view">
+        <field name="name">kpi.dashboard.form</field>
+        <field name="model">kpi.dashboard</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0">
+                <sheet>
+                    <group string="Today's Overview" col="3">
+                        <field name="assets_available" readonly="1"/>
+                        <field name="assets_allocated" readonly="1"/>
+                        <field name="maintenance_today" readonly="1"/>
+                        <field name="active_bookings" readonly="1"/>
+                        <field name="pending_transfers" readonly="1"/>
+                        <field name="upcoming_returns" readonly="1"/>
+                        <field name="overdue_returns" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kpi_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">kpi.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+</odoo>

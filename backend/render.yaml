@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: assetflow-backend
+    runtime: docker
+    rootDir: .
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /assetflow/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: assetflow-postgres
+          property: connectionString
+      - key: PORT
+        value: 10000
+      - key: ODOO_INIT_MODULES
+        value: assetflow_erp
+    disk:
+      name: assetflow-data
+      mountPath: /var/lib/odoo
+      sizeGB: 10
+
+databases:
+  - name: assetflow-postgres
+    plan: free
+    databaseName: assetflow
+    user: assetflow
