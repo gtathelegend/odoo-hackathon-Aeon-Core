@@ -38,10 +38,58 @@ class AssetTransfer(models.Model):
             if not record.requested_holder_id.active or not record.requested_holder_id.user_id.assetflow_can_login:
                 raise ValidationError(_("Requested holder must be active."))
 
+    @api.constrains("asset_id", "current_holder_id", "requester_id")
+    def _check_asset_context(self):
+        for record in self:
+            active_alloc = self.env["asset.allocation"].search(
+                [("asset_id", "=", record.asset_id.id), ("status", "in", ("active", "overdue", "pending_reassignment"))],
+                limit=1,
+            )
+            if not active_alloc:
+                raise ValidationError(_("Transfer can only be requested for allocated assets."))
+            if active_alloc.employee_id and active_alloc.employee_id != record.current_holder_id:
+                raise ValidationError(_("Current holder does not match the active allocation."))
+            if record.requester_id == record.requested_holder_id.user_id:
+                raise ValidationError(_("Requester and recipient cannot be the same user."))
+
+    def write(self, vals):
+        status_map = {
+            "requested": {"approved", "rejected"},
+            "approved": {"re_allocated"},
+            "re_allocated": set(),
+            "rejected": set(),
+        }
+        if "status" in vals:
+            target = vals["status"]
+            for record in self:
+                if target not in status_map.get(record.status, set()) and target != record.status:
+                    raise ValidationError(
+                        _("Invalid transfer transition from %(current)s to %(target)s.")
+                        % {"current": record.status, "target": target}
+                    )
+        return super().write(vals)
+
     def action_approve(self):
         for record in self:
+            if record.status != "requested":
+                raise ValidationError(_("Only requested transfers can be approved."))
             if record.requester_id == self.env.user:
                 raise ValidationError(_("Self-approval is not allowed."))
+            record.write(
+                {
+                    "status": "approved",
+                    "reviewed_by_id": self.env.user.id,
+                    "review_date": fields.Datetime.now(),
+                }
+            )
+            users = record.requester_id | record.requested_holder_id.user_id | record.current_holder_id.user_id
+            record._notify_users(users, "transfer", _("Transfer approved"), _("Transfer approved for %s") % record.asset_id.asset_tag)
+            record.action_reallocate()
+
+    def action_reallocate(self):
+        for record in self:
+            if record.status != "approved":
+                raise ValidationError(_("Only approved transfers can be re-allocated."))
             active_alloc = self.env["asset.allocation"].search(
                 [("asset_id", "=", record.asset_id.id), ("status", "in", ("active", "overdue", "pending_reassignment"))],
                 limit=1,
@@ -49,7 +97,7 @@ class AssetTransfer(models.Model):
             if not active_alloc:
                 raise ValidationError(_("No active allocation exists for this asset."))
             active_alloc.action_return(active_alloc.asset_id.condition)
-            self.env["asset.allocation"].create(
+            new_alloc = self.env["asset.allocation"].create(
                 {
                     "asset_id": record.asset_id.id,
                     "holder_type": "employee",
@@ -59,15 +107,21 @@ class AssetTransfer(models.Model):
             record.write(
                 {
                     "status": "re_allocated",
-                    "reviewed_by_id": self.env.user.id,
-                    "review_date": fields.Datetime.now(),
                 }
             )
             users = record.requester_id | record.requested_holder_id.user_id | record.current_holder_id.user_id
-            record._notify_users(users, "transfer", _("Transfer approved"), _("Transfer approved for %s") % record.asset_id.asset_tag)
+            record._notify_users(
+                users,
+                "transfer",
+                _("Transfer completed"),
+                _("Asset %s was re-allocated.") % record.asset_id.asset_tag,
+            )
+            record._log_activity("transfer_reallocated", "approved", "re_allocated", metadata=str(new_alloc.id))
 
     def action_reject(self, reason):
         for record in self:
+            if record.status != "requested":
+                raise ValidationError(_("Only requested transfers can be rejected."))
             record.write(
                 {
                     "status": "rejected",

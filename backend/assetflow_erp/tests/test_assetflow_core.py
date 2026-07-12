@@ -20,6 +20,15 @@ class TestAssetflowCore(SavepointCase):
             }
         )
         cls.employee = cls.user.employee_id
+        cls.user_two = cls.env["res.users"].create(
+            {
+                "name": "Employee Two",
+                "login": "employee2@example.com",
+                "password": "Password1!",
+                "assetflow_role": "employee",
+            }
+        )
+        cls.employee_two = cls.user_two.employee_id
         cls.asset = cls.env["asset.asset"].create(
             {
                 "name": "Dell Laptop",
@@ -83,6 +92,63 @@ class TestAssetflowCore(SavepointCase):
                     "end_time": end + timedelta(minutes=15),
                 }
             )
+
+    def test_adjacent_booking_allowed(self):
+        asset = self.env["asset.asset"].create(
+            {
+                "name": "Room 102",
+                "serial_number": "ROOM-002",
+                "category_id": self.category.id,
+                "acquisition_date": fields.Date.today(),
+                "acquisition_cost": 100.00,
+                "condition": "good",
+                "location": "Floor 1",
+                "is_bookable": True,
+            }
+        )
+        start = fields.Datetime.now() + timedelta(hours=3)
+        end = start + timedelta(hours=1)
+        self.env["asset.booking"].create(
+            {"asset_id": asset.id, "booker_id": self.employee.id, "start_time": start, "end_time": end}
+        )
+        second = self.env["asset.booking"].create(
+            {
+                "asset_id": asset.id,
+                "booker_id": self.employee.id,
+                "start_time": end,
+                "end_time": end + timedelta(minutes=30),
+            }
+        )
+        self.assertTrue(second)
+
+    def test_transfer_approval_reallocates_asset(self):
+        self.env["asset.allocation"].create(
+            {
+                "asset_id": self.asset.id,
+                "holder_type": "employee",
+                "employee_id": self.employee.id,
+                "expected_return_date": fields.Date.today() + timedelta(days=2),
+            }
+        )
+        transfer = self.env["asset.transfer"].create(
+            {
+                "asset_id": self.asset.id,
+                "current_holder_id": self.employee.id,
+                "requested_holder_id": self.employee_two.id,
+                "reason": "Move to new assignee",
+            }
+        )
+        transfer.action_approve()
+        self.assertEqual(transfer.status, "re_allocated")
+        new_alloc = self.env["asset.allocation"].search(
+            [
+                ("asset_id", "=", self.asset.id),
+                ("employee_id", "=", self.employee_two.id),
+                ("status", "in", ("active", "overdue")),
+            ],
+            limit=1,
+        )
+        self.assertTrue(new_alloc)
 
     def test_user_lockout_after_five_failures(self):
         user = self.env["res.users"].create(

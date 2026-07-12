@@ -60,7 +60,23 @@ class AssetAllocation(models.Model):
         for vals in vals_list:
             asset = self.env["asset.asset"].browse(vals.get("asset_id"))
             if asset.state != "available":
-                raise ValidationError(_("Only available assets can be allocated."))
+                active_allocation = self.search(
+                    [("asset_id", "=", asset.id), ("status", "in", ("active", "overdue", "pending_reassignment"))],
+                    limit=1,
+                )
+                holder_name = (
+                    active_allocation.employee_id.name
+                    or active_allocation.department_id.name
+                    or _("Unknown holder")
+                )
+                allocation_date = active_allocation.allocation_date and fields.Datetime.to_string(active_allocation.allocation_date) or _("N/A")
+                raise ValidationError(
+                    _(
+                        "Allocation conflict: this asset is currently held by %(holder)s since %(date)s. "
+                        "Use a transfer request to reassign it."
+                    )
+                    % {"holder": holder_name, "date": allocation_date}
+                )
             active_allocation = self.search([("asset_id", "=", asset.id), ("status", "in", ("active", "overdue", "pending_reassignment"))], limit=1)
             if active_allocation:
                 raise ValidationError(_("This asset already has an active allocation."))

@@ -64,7 +64,15 @@ class AssetBooking(models.Model):
         for record in records:
             overlap = record._check_overlap(record.asset_id.id, record.start_time, record.end_time, exclude_id=record.id)
             if overlap:
-                raise ValidationError(_("Requested time overlaps with an existing booking."))
+                slot = _("%(start)s to %(end)s") % {
+                    "start": fields.Datetime.to_string(overlap.start_time),
+                    "end": fields.Datetime.to_string(overlap.end_time),
+                }
+                holder = overlap.booker_id.name or _("Unknown holder")
+                raise ValidationError(
+                    _("Booking conflict: slot %(slot)s is already held by %(holder)s.")
+                    % {"slot": slot, "holder": holder}
+                )
             if record.asset_id.state == "available":
                 record.asset_id.action_transition_state("reserved", "asset_reserved")
             record._notify_users(record.booker_id.user_id, "booking", _("Booking created"), _("Booking created for %s") % record.asset_id.asset_tag)
@@ -75,7 +83,15 @@ class AssetBooking(models.Model):
         for record in self:
             overlap = record._check_overlap(record.asset_id.id, record.start_time, record.end_time, exclude_id=record.id)
             if overlap:
-                raise ValidationError(_("Requested time overlaps with an existing booking."))
+                slot = _("%(start)s to %(end)s") % {
+                    "start": fields.Datetime.to_string(overlap.start_time),
+                    "end": fields.Datetime.to_string(overlap.end_time),
+                }
+                holder = overlap.booker_id.name or _("Unknown holder")
+                raise ValidationError(
+                    _("Booking conflict: slot %(slot)s is already held by %(holder)s.")
+                    % {"slot": slot, "holder": holder}
+                )
         return result
 
     def action_cancel(self):
