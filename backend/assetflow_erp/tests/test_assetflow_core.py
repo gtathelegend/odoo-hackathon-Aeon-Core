@@ -83,3 +83,28 @@ class TestAssetflowCore(SavepointCase):
                     "end_time": end + timedelta(minutes=15),
                 }
             )
+
+    def test_user_lockout_after_five_failures(self):
+        user = self.env["res.users"].create(
+            {
+                "name": "Locked Candidate",
+                "login": "locked@example.com",
+                "password": "Password1!",
+                "assetflow_role": "employee",
+            }
+        )
+        for _ in range(5):
+            user.action_record_failed_login()
+        self.assertEqual(user.failed_login_count, 5)
+        self.assertTrue(user.locked_until)
+
+    def test_password_policy_rejects_weak_password(self):
+        with self.assertRaises(ValidationError):
+            self.env["res.users"].create(
+                {
+                    "name": "Weak Password",
+                    "login": "weak@example.com",
+                    "password": "password",
+                    "assetflow_role": "employee",
+                }
+            )
