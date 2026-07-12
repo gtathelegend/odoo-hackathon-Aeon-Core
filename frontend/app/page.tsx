@@ -4,7 +4,7 @@ import { fetchBackendHealth } from "../lib/api";
 const screens = [
   {
     title: "Authentication",
-    description: "Login and self-signup connect to the Odoo backend through AssetFlow auth routes.",
+    description: "Login and self-signup connect to the AssetFlow API through the auth routes.",
     bullets: ["Employee-only signup", "Password policy", "Lockout and idle timeout"],
   },
   {
@@ -27,11 +27,11 @@ export default async function HomePage() {
       <div className="shell">
         <section className="hero">
           <div>
-            <span className="badge">Vercel frontend + Render backend</span>
+            <span className="badge">Next.js frontend + Express API</span>
             <h1>AssetFlow</h1>
             <p>
-              This frontend is prepared for Vercel deployment and points at the
-              Render-hosted Odoo backend through <code>NEXT_PUBLIC_API_BASE_URL</code>.
+              This frontend points at the AssetFlow Express API through{" "}
+              <code>NEXT_PUBLIC_API_URL</code>.
             </p>
           </div>
           <aside className="panel">
@@ -41,8 +41,8 @@ export default async function HomePage() {
               <span>{health.message}</span>
             </div>
             <p>
-              Set <code>NEXT_PUBLIC_API_BASE_URL</code> in Vercel to your Render
-              backend URL, for example <code>https://assetflow-backend.onrender.com</code>.
+              Set <code>NEXT_PUBLIC_API_URL</code> to your backend URL, for
+              example <code>https://assetflow-api.example.com/api/v1</code>.
             </p>
           </aside>
         </section>
@@ -54,9 +54,9 @@ export default async function HomePage() {
         </section>
 
         <section className="footer">
-          Backend deployment is defined in <code>render.yaml</code>. Frontend
-          deployment uses this <code>frontend</code> app as the Vercel project
-          root.
+          The backend is a modular Express + TypeScript API under{" "}
+          <code>backend/</code>. This <code>frontend/</code> Next.js app
+          composes the user-facing experience.
         </section>
       </div>
     </main>

@@ -1,20 +1,29 @@
-const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8069";
+import { API_BASE_URL } from './api-client';
 
-export async function fetchBackendHealth() {
+export interface HealthStatus {
+  ok: boolean;
+  message: string;
+}
+
+/**
+ * Check backend connectivity against the AssetFlow API health endpoint.
+ * The backend base URL is configured through NEXT_PUBLIC_API_URL.
+ */
+export async function fetchBackendHealth(): Promise<HealthStatus> {
   try {
-    const response = await fetch(`${baseUrl}/assetflow/health`, {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
+    const response = await fetch(`${API_BASE_URL}/health`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
     });
     if (!response.ok) {
       return { ok: false, message: `Backend returned ${response.status}` };
     }
-    const data = (await response.json()) as { ok: boolean; service: string };
-    return { ok: data.ok, message: data.service };
+    const data = (await response.json()) as { status: string; service: string };
+    return { ok: data.status === 'ok', message: data.service };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Backend unavailable",
+      message: error instanceof Error ? error.message : 'Backend unavailable',
     };
   }
 }
