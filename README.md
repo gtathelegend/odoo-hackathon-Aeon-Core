@@ -1,164 +1,238 @@
 # AssetFlow
 
-AssetFlow is an enterprise asset and shared-resource management system. It
-covers the complete journey of an asset from registration to disposal with
-role-based access, allocation and booking workflows, maintenance, audits, and
-analytics.
+AssetFlow is an enterprise asset and shared-resource management platform built for hackathon submission and real-world extensibility. It covers the full asset lifecycle from registration to disposal, with role-based workflows, auditability, guided conflict resolution, and analytics.
 
-This repository holds the production-grade foundation. Business modules are
-built incrementally by subsequent prompts and plug into the API architecture
-established here.
+## Hackathon Submission Summary
+
+AssetFlow is designed to demonstrate the kind of enterprise software judges expect from a strong hackathon project:
+
+- a clear business problem with broad organizational relevance
+- a complete asset lifecycle and custody model
+- role-aware access and progressive disclosure
+- fast conflict handling for allocations and bookings
+- audit trails, notifications, reports, and dashboard visibility
+- a split frontend/backend architecture that is ready for deployment
+
+The authoritative product brief lives in [docs/prd.md](./docs/prd.md).
+
+## What AssetFlow Solves
+
+AssetFlow gives organizations a single place to manage:
+
+- assets and their lifecycle state
+- allocations to employees or departments
+- shared-resource bookings with overlap checks
+- maintenance requests and approvals
+- transfer requests for reassignment
+- audit cycles and discrepancy reporting
+- activity logs and notifications
+- KPI dashboards and analytics
+- AI-assisted search and reporting support
+
+The platform is industry-agnostic and fits offices, schools, hospitals, factories, and similar environments.
+
+## Core Features
+
+### Authentication and Access Control
+
+- email/password authentication
+- signup flow with default Employee role
+- password policy enforcement
+- login failure lockout behavior
+- session timeout handling
+- role-based access control for Employee, Department Head, Asset Manager, and Admin
+- access-denied logging for forbidden actions
+
+### Dashboard and Visibility
+
+- role-scoped KPI dashboard
+- cards for available assets, allocated assets, maintenance today, active bookings, pending transfers, and upcoming returns
+- overdue return highlighting
+- quick actions based on role
+- activity feed and timeline views
+- dashboard polling and time-series endpoints
+
+### Organization Setup
+
+- department management with hierarchy
+- department head assignment
+- department activation and deactivation controls
+- employee directory management
+- employee role promotion and reassignment flows
+- asset category management
+- category-specific custom fields
+
+### Asset Management
+
+- asset registration with generated asset tags
+- asset lifecycle state machine
+- serial number uniqueness
+- required metadata validation
+- attachment handling for asset records
+- searchable asset directory
+- asset history across allocations, bookings, maintenance, and audit events
+
+### Allocation and Transfers
+
+- allocation to employees or departments
+- expected return date validation
+- return processing with condition capture
+- overdue allocation tracking
+- transfer request workflow
+- conflict-first allocation guidance
+- re-allocation after transfer approval
+
+### Booking and Conflict Resolution
+
+- shared resource booking
+- overlap validation using half-open intervals
+- minimum booking duration enforcement
+- booking cancellation and rescheduling
+- booking reminders
+- guided conflict resolution with context-rich messages
+- suggested next-slot behavior for booking conflicts
+
+### Maintenance
+
+- maintenance request creation
+- approval, rejection, technician assignment, in-progress, and resolution states
+- resolution notes and completion tracking
+- maintenance history on the asset record
+- in-app notifications for status changes
+
+### Audit and Reporting
+
+- audit cycle creation and closure
+- audit marks for verified, missing, and damaged assets
+- discrepancy report generation
+- locked closed-cycle behavior
+- utilization reports
+- maintenance frequency reporting
+- assets due for maintenance
+- assets due for retirement
+- department allocation summary
+- booking heatmap
+- CSV and PDF export support
+
+### Notifications and Logging
+
+- activity log for state-changing actions
+- in-app notifications for major workflow events
+- unread notification indicator
+- retry behavior for failed notification delivery
+
+### AI and Productivity
+
+- AI assistant entry point
+- natural language asset search direction
+- report summaries and dashboard insights
+- recommendation-oriented workflows
+
+## Unique Selling Points
+
+AssetFlow stands out because it is not just an inventory list. It is a workflow-heavy enterprise system with deliberate UX and operational controls.
+
+1. Conflict-first workflow design that guides users instead of only blocking them.
+2. Full lifecycle governance for assets, allocations, bookings, maintenance, and audits.
+3. Role-based progressive disclosure so each user sees only what they can act on.
+4. Traceability through activity logs, notifications, and timeline/history views.
+5. Split frontend and backend architecture ready for deployment on modern platforms.
+6. Hackathon-friendly scope that still feels like a real enterprise product.
 
 ## Architecture
 
-AssetFlow is a split application:
+AssetFlow is split into two deployable applications:
 
-- **Frontend** — Next.js (App Router) + TypeScript + Tailwind
-- **Backend** — Express + TypeScript REST API (`/api/v1`)
-- **Database** — PostgreSQL (Neon serverless) via Prisma
-- **Realtime** — Socket.IO (notifications, dashboard, activity namespaces)
-- **API Docs** — Swagger UI at `/api/docs`
+- [frontend](./frontend) - Next.js user interface
+- [backend](./backend) - Express + TypeScript REST API
+
+Supporting project folders:
+
+- [docs](./docs) - product requirements and planning
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - deployment instructions
+
+### Backend Structure
+
+The backend follows a modular service architecture:
+
+- controllers
+- services
+- repositories
+- routes
+- middleware
+- validators
+- config
+- socket
+- jobs
+- prisma schema and seed data
+
+### Request Flow
+
+Request -> Route -> Controller -> Service -> Repository -> Prisma -> PostgreSQL
+
+## Technology Stack
+
+### Frontend
+
+- Next.js 14
+- React 18
+- TypeScript
+- Tailwind CSS
+- Zustand
+- Next.js App Router
+
+### Backend
+
+- Express.js
+- TypeScript
+- Prisma ORM
+- PostgreSQL on Neon
+- JWT authentication
+- Bcrypt password hashing
+- Helmet security headers
+- CORS
+- Winston logging
+- Multer file uploads
+- Socket.IO
+- Swagger / OpenAPI docs
+- Zod validation
+
+### Tooling and Quality
+
+- ESLint
+- Prettier
+- Vitest
+- Supertest
+- Conventional Commits
+
+### Deployment and Services
+
+- Frontend: Vercel
+- Backend: Render
+- Database: Neon PostgreSQL
+- Storage: Cloudinary
+- Email: Resend
+- AI: Grok API
+
+## Repository Layout
 
 ```
 assetflow/
-  frontend/     Next.js app (UI, services, stores, types)
-  backend/      Express + TypeScript API (Clean Architecture)
-  database/     Database documentation (schema lives in backend/prisma)
-  docs/         Product and technical documentation
-  scripts/      Automation and developer scripts
-  .github/      CI workflows
+  backend/      Express + TypeScript API and Prisma backend
+  frontend/     Next.js application and UI shell
+  docs/         PRD and related product documents
+  .kiro/        Detailed specs, tasks, and design docs
 ```
 
-## Backend Folder Structure
-
-```
-backend/src/
-  app.ts              Express app factory (middleware, routes, docs)
-  server.ts           Bootstrap + graceful shutdown
-
-  config/             Typed configuration + Prisma client + logger + swagger
-  constants/          http / messages / roles / permissions / status / routes
-  controllers/        Thin HTTP handlers (delegate to services)
-  services/           Business logic (orchestrates repositories)
-  repositories/       Data access (only layer allowed to touch Prisma)
-  routes/             Versioned routers (/api/v1)
-  middleware/         requestId, logger, error, notFound, cors, auth, rateLimiter, upload, validate
-  validators/         Zod schemas (common + per-feature folders)
-  models/             Prisma-derived domain model re-exports
-  interfaces/         ApiResponse, Pagination, RequestUser, Repository, Service
-  types/              Shared TypeScript types
-  utils/              response, errors, pagination, asyncHandler, crypto, uuid, jwt, date, env, logger
-  socket/             Socket.IO server + namespaces (notifications, dashboard, activity)
-  jobs/               Scheduler + worker placeholders
-  docs/               API documentation notes
-prisma/               schema.prisma + migrations + seed.ts
-tests/                unit/ + integration/
-uploads/              File upload target (with uploads/temp for staging)
-logs/                 error.log + combined.log
-```
-
-## Request Flow
-
-```
-Request → Route → Controller → Service → Repository → Prisma → PostgreSQL
-```
-
-- Controllers never touch Prisma.
-- Repositories never import controllers or services.
-- Utilities are shared across layers.
-
-## Response Envelope
-
-**Success**
-
-```json
-{ "success": true, "message": "…", "data": { … }, "meta": { … } }
-```
-
-**Failure**
-
-```json
-{ "success": false, "message": "…", "error": { … }, "code": "VALIDATION_ERROR" }
-```
-
-## Error Handling
-
-All errors extend `BaseError` (`utils/errors.ts`):
-
-- `ValidationError` → 400
-- `AuthenticationError` → 401
-- `AuthorizationError` → 403
-- `NotFoundError` → 404
-- `ConflictError` → 409
-- `TooManyRequestsError` → 429
-- `DatabaseError` / `InternalServerError` → 500
-- `NotImplementedError` → 501
-
-The global error handler maps everything (including ZodError) into the
-standardized failure envelope and logs unexpected failures with the request id.
-
-## Logging
-
-Winston with two file transports plus a colorized console transport outside
-production:
-
-- `logs/error.log` — errors only
-- `logs/combined.log` — all levels
-- Morgan pipes HTTP access logs into Winston
-
-## Swagger / OpenAPI
-
-- UI: [http://localhost:5000/api/docs](http://localhost:5000/api/docs)
-- Raw spec: [http://localhost:5000/api/docs.json](http://localhost:5000/api/docs.json)
-
-The spec is generated at boot from `@openapi` JSDoc blocks in
-`src/routes/**/*.ts` and `src/controllers/**/*.ts`.
-
-## Health Endpoints
-
-| Endpoint             | Purpose                                                |
-| -------------------- | ------------------------------------------------------ |
-| `GET /api/v1/health` | Liveness + readiness (database, uptime, memory)        |
-| `GET /api/v1/version`| Service, API and Node runtime version                  |
-| `GET /api/v1/status` | Extended runtime status                                |
-
-## Tech Stack
-
-- Node.js + Express + TypeScript (strict)
-- Prisma ORM + PostgreSQL (Neon)
-- Zod, Helmet, CORS, Compression, cookie-parser, express-rate-limit
-- Morgan, Winston
-- Socket.IO
-- Swagger UI + swagger-jsdoc
-- bcrypt, jsonwebtoken, multer
-- Vitest + Supertest
-- ESLint + Prettier
-
-## Getting Started
+## Local Development
 
 ### Backend
 
 ```bash
 cd backend
 npm install
-cp .env.example .env      # fill in DATABASE_URL, JWT secrets, etc.
 npm run prisma:generate
-npm run dev               # starts the API on PORT (default 5000)
-```
-
-Verify:
-
-```bash
-curl http://localhost:5000/api/v1/health
-curl http://localhost:5000/api/v1/version
-curl http://localhost:5000/api/v1/status
-```
-
-Run the test suite:
-
-```bash
-npm test
-npm run test:coverage
+npm run dev
 ```
 
 ### Frontend
@@ -166,57 +240,38 @@ npm run test:coverage
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local   # set NEXT_PUBLIC_API_URL
-npm run dev                  # starts Next.js on port 3000
+npm run dev
 ```
 
-## Environment Variables
+Set `NEXT_PUBLIC_API_URL` to the backend URL in your frontend environment file.
 
-### Backend (`backend/.env`)
+## API and Ops
 
-| Variable                | Description                                     |
-| ----------------------- | ----------------------------------------------- |
-| `NODE_ENV`              | `development` \| `test` \| `production`         |
-| `PORT`                  | API port (default 5000)                         |
-| `API_PREFIX`            | API path prefix (default `/api`)                |
-| `DATABASE_URL`          | Neon PostgreSQL pooled connection               |
-| `DIRECT_URL`            | Neon direct connection (Prisma migrations)      |
-| `JWT_SECRET`            | Access token signing secret                     |
-| `JWT_REFRESH_SECRET`    | Refresh token signing secret                    |
-| `JWT_ACCESS_TTL`        | Access token TTL (default 15m)                  |
-| `JWT_REFRESH_TTL`       | Refresh token TTL (default 7d)                  |
-| `COOKIE_SECRET`         | Signed-cookie secret                            |
-| `CORS_ORIGIN`           | Comma-separated allowed origins (or `*`)        |
-| `CORS_CREDENTIALS`      | Allow credentials on CORS (default `true`)      |
-| `RATE_LIMIT_WINDOW_MS`  | Rate limit window in ms (default 60000)         |
-| `RATE_LIMIT_MAX`        | Max requests per window (default 100)           |
-| `BODY_LIMIT`            | Request body size limit (default 10mb)          |
-| `LOG_LEVEL`             | Winston log level                               |
-| `UPLOAD_DIR`            | Upload target (default `uploads`)               |
-| `UPLOAD_TEMP_DIR`       | Temp upload staging (default `uploads/temp`)   |
-| `UPLOAD_MAX_SIZE`       | Max upload size in bytes                        |
-| `GROK_API_KEY`          | AI assistant API key (later prompts)            |
-| `RESEND_API_KEY`        | Email delivery API key (later prompts)          |
-| `CLOUDINARY_URL`        | Media storage URL (later prompts)               |
+- API docs are exposed through Swagger UI at `/api/docs`.
+- Health, version, and status endpoints are available in the backend.
+- Notifications and dashboard updates use Socket.IO namespaces.
+- Files are handled through the backend upload pipeline and stored through configured media services.
 
-### Frontend (`frontend/.env.local`)
+## Specs
 
-| Variable                | Description                          |
-| ----------------------- | ------------------------------------ |
-| `NEXT_PUBLIC_API_URL`   | Base URL of the AssetFlow API        |
-| `NEXT_PUBLIC_APP_NAME`  | Application name (default AssetFlow) |
-| `NEXT_PUBLIC_GROK_MODEL`| AI model identifier                  |
+Authoritative project specifications live in:
 
-Never hardcode secrets. Use `.env` files (git-ignored) based on `.env.example`.
+- [docs/prd.md](./docs/prd.md)
+- [.kiro/specs/assetflow-erp/requirements.md](./.kiro/specs/assetflow-erp/requirements.md)
+- [.kiro/specs/assetflow-erp/design.md](./.kiro/specs/assetflow-erp/design.md)
+- [.kiro/specs/assetflow-erp/tasks.md](./.kiro/specs/assetflow-erp/tasks.md)
+- [.kiro/specs/assetflow-erp/technical-implementation.md](./.kiro/specs/assetflow-erp/technical-implementation.md)
 
-## Development Workflow
+## Deployment
 
-1. Create a feature branch.
-2. Backend: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
-3. Frontend: `npm run lint`, `npm run build`.
-4. Commit using conventional commits (e.g. `feat(assets): …`).
-5. Open a pull request. CI runs lint + build for both apps.
+Split hosting is configured for:
 
-## Specifications
+- backend on Render
+- frontend on Vercel
+- PostgreSQL on Neon
 
-Authoritative specs live under [.kiro/specs/assetflow-erp](./.kiro/specs/assetflow-erp).
+Full setup details are documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Submission Goal
+
+AssetFlow is meant to feel like a complete hackathon submission: clear problem statement, strong user roles, visible business value, polished architecture, and a credible path from demo to production.

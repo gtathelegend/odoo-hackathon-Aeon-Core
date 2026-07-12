@@ -12,6 +12,7 @@ export { reportsController } from './reports.controller';
 export { notificationsController } from './notifications.controller';
 export { assistantController } from './assistant.controller';
 export { dashboardController } from './dashboard.controller';
+export { activityController } from './activity.controller';
 export { settingsController } from './settings.controller';
 export { createPlaceholderController } from './_placeholder.controller';
 export type { PlaceholderController } from './_placeholder.controller';
