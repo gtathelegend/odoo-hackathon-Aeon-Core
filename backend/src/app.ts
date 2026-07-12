@@ -18,6 +18,7 @@ import {
   rateLimiter,
   errorHandler,
   notFoundHandler,
+  sanitizeMiddleware,
 } from './middleware';
 import { sendSuccess } from './utils/response';
 
@@ -41,6 +42,7 @@ export function createApp(): Application {
   app.use(express.json({ limit: serverConfig.bodyLimit }));
   app.use(express.urlencoded({ extended: true, limit: serverConfig.bodyLimit }));
   app.use(cookieParser(serverConfig.cookieSecret));
+  app.use(sanitizeMiddleware);
   app.use(loggerMiddleware);
   app.use(rateLimiter);
 
