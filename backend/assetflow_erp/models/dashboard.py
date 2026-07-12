@@ -60,3 +60,16 @@ class KpiDashboard(models.TransientModel):
                 [("status", "in", ("active", "overdue")), ("expected_return_date", ">=", today), ("expected_return_date", "<=", soon)]
             )
             record.overdue_returns = allocation_model.search_count([("status", "=", "overdue")])
+
+    @api.model
+    def get_kpis(self):
+        dashboard = self.create({})
+        return {
+            "assets_available": dashboard.assets_available,
+            "assets_allocated": dashboard.assets_allocated,
+            "maintenance_today": dashboard.maintenance_today,
+            "active_bookings": dashboard.active_bookings,
+            "pending_transfers": dashboard.pending_transfers,
+            "upcoming_returns": dashboard.upcoming_returns,
+            "overdue_returns": dashboard.overdue_returns,
+        }
