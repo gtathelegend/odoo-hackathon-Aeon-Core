@@ -54,7 +54,7 @@ describe('feature route placeholders', () => {
   // (assets, asset-categories, asset-locations moved to real handlers in
   // Prompt 5 and require auth.)
   it('respond with 501 Not Implemented', async () => {
-    const res = await request(app).get('/api/v1/notifications');
+    const res = await request(app).get('/api/v1/reports');
     expect(res.status).toBe(501);
     expect(res.body.success).toBe(false);
     expect(res.body.code).toBe('NOT_IMPLEMENTED');
