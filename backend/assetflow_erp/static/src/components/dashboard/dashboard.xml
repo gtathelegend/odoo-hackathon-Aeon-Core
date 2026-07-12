@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="assetflow_erp.Dashboard" owl="1">
+        <div class="o_action_manager o_assetflow_dashboard px-4 py-3 bg-light h-100 overflow-auto">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1 font-weight-bold text-dark text-uppercase tracking-tight" style="font-family: 'Archivo', sans-serif;">AssetFlow Dashboard</h2>
+                    <p class="text-muted mb-0">Real-time enterprise asset and resource overview</p>
+                </div>
+            </div>
+            
+            <!-- KPI Grid -->
+            <div class="row g-3 mb-4">
+                <!-- Available -->
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 border-start border-success border-4 p-3 bg-white" style="cursor: pointer;" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_asset')">
+                        <div class="text-uppercase text-muted small font-weight-bold">Available Assets</div>
+                        <div class="h2 font-weight-bold text-success mt-1"><t t-out="state.kpis.assets_available or 0"/></div>
+                    </div>
+                </div>
+                <!-- Allocated -->
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 border-start border-primary border-4 p-3 bg-white" style="cursor: pointer;" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_asset')">
+                        <div class="text-uppercase text-muted small font-weight-bold">Allocated Assets</div>
+                        <div class="h2 font-weight-bold text-primary mt-1"><t t-out="state.kpis.assets_allocated or 0"/></div>
+                    </div>
+                </div>
+                <!-- Maintenance -->
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 border-start border-warning border-4 p-3 bg-white" style="cursor: pointer;" t-on-click="() => this.onKpiClick('assetflow_erp.action_maintenance_request')">
+                        <div class="text-uppercase text-muted small font-weight-bold">Maintenance Today</div>
+                        <div class="h2 font-weight-bold text-warning mt-1"><t t-out="state.kpis.maintenance_today or 0"/></div>
+                    </div>
+                </div>
+                <!-- Bookings -->
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 border-start border-info border-4 p-3 bg-white" style="cursor: pointer;" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_booking')">
+                        <div class="text-uppercase text-muted small font-weight-bold">Active Bookings</div>
+                        <div class="h2 font-weight-bold text-info mt-1"><t t-out="state.kpis.active_bookings or 0"/></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overdue, Transfers, Returns -->
+            <div class="row g-3 mb-4">
+                <!-- Overdue -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0 border-start border-danger border-4 p-3 bg-white" style="cursor: pointer;" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_allocation')">
+                        <div class="text-uppercase text-muted small font-weight-bold">Overdue Returns</div>
+                        <div class="h2 font-weight-bold text-danger mt-1"><t t-out="state.kpis.overdue_returns or 0"/></div>
+                    </div>
+                </div>
+                <!-- Pending Transfers -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0 border-start border-secondary border-4 p-3 bg-white" style="cursor: pointer;" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_transfer')">
+                        <div class="text-uppercase text-muted small font-weight-bold">Pending Transfers</div>
+                        <div class="h2 font-weight-bold text-secondary mt-1"><t t-out="state.kpis.pending_transfers or 0"/></div>
+                    </div>
+                </div>
+                <!-- Upcoming Returns -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0 border-start border-dark border-4 p-3 bg-white" style="cursor: pointer;" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_allocation')">
+                        <div class="text-uppercase text-muted small font-weight-bold">Upcoming Returns (7 Days)</div>
+                        <div class="h2 font-weight-bold text-dark mt-1"><t t-out="state.kpis.upcoming_returns or 0"/></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card shadow-sm border-0 p-4 bg-white mt-3">
+                <h4 class="mb-3 font-weight-bold">Quick Actions</h4>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-primary px-4 py-2" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_asset')">
+                        <i class="fa fa-plus-circle me-1"/> View Assets Directory
+                    </button>
+                    <button class="btn btn-success px-4 py-2" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_allocation')">
+                        <i class="fa fa-exchange me-1"/> Manage Allocations
+                    </button>
+                    <button class="btn btn-warning text-white px-4 py-2" t-on-click="() => this.onKpiClick('assetflow_erp.action_maintenance_request')">
+                        <i class="fa fa-wrench me-1"/> Maintenance Requests
+                    </button>
+                    <button class="btn btn-info text-white px-4 py-2" t-on-click="() => this.onKpiClick('assetflow_erp.action_asset_booking')">
+                        <i class="fa fa-calendar me-1"/> Booking Calendar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

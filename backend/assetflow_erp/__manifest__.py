@@ -6,6 +6,12 @@
     "author": "Aeon Core",
     "license": "LGPL-3",
     "depends": ["base", "mail", "hr", "web"],
+    "assets": {
+        "web.assets_backend": [
+            "assetflow_erp/static/src/components/dashboard/dashboard.js",
+            "assetflow_erp/static/src/components/dashboard/dashboard.xml",
+        ],
+    },
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",

@@ -102,10 +102,36 @@ async function makeJsonRpcRequest<T = any>(
   endpoint: string,
   params: any = {}
 ): Promise<ApiResponse<T>> {
-  return makeRequest<T>(endpoint, {
+  const res = await makeRequest<any>(endpoint, {
     method: "POST",
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params, id: Date.now() }),
   });
+
+  if (!res.ok) {
+    return res;
+  }
+
+  const jsonRpcData = res.data;
+  if (jsonRpcData && jsonRpcData.error) {
+    const errorMsg = jsonRpcData.error.data?.message || jsonRpcData.error.message || "Odoo Server Error";
+    return {
+      ok: false,
+      error: errorMsg,
+    };
+  }
+
+  const resultVal = jsonRpcData?.result;
+  if (resultVal && typeof resultVal === "object" && "ok" in resultVal && resultVal.ok === false) {
+    return {
+      ok: false,
+      error: resultVal.error || "Request failed",
+    };
+  }
+
+  return {
+    ok: true,
+    data: resultVal,
+  };
 }
 
 // ============================================================================
@@ -160,11 +186,10 @@ export async function pingSession(): Promise<ApiResponse> {
 // ============================================================================
 
 export async function fetchDashboardKPIs(): Promise<ApiResponse<DashboardKPIs>> {
-  // This will call Odoo JSON-RPC to get KPI data
   return makeJsonRpcRequest("/web/dataset/call_kw", {
     model: "kpi.dashboard",
-    method: "create",
-    args: [{}],
+    method: "get_kpis",
+    args: [],
     kwargs: {},
   });
 }
@@ -362,17 +387,20 @@ export async function fetchAuditMarks(cycleId: number): Promise<ApiResponse<any[
 
 export async function fetchUtilizationReport(): Promise<ApiResponse<any[]>> {
   return makeJsonRpcRequest("/web/dataset/call_kw", {
-    model: "utilization.report",
-    method: "get_department_utilization",
+    model: "report.assetflow_erp.utilization_service",
+    method: "get_report_data",
     args: [],
-    kwargs: {},
+    kwargs: {
+      date_from: "2026-01-01",
+      date_to: "2026-12-31",
+    },
   });
 }
 
 export async function fetchMaintenanceReport(): Promise<ApiResponse<any[]>> {
   return makeJsonRpcRequest("/web/dataset/call_kw", {
-    model: "maintenance.report",
-    method: "get_maintenance_trends",
+    model: "report.assetflow_erp.maintenance_service",
+    method: "get_due_for_maintenance",
     args: [],
     kwargs: {},
   });
