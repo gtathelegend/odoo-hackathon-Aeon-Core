@@ -6,3 +6,6 @@ export * from './common';
 export * as authValidators from './auth';
 export * as usersValidators from './users';
 export * as departmentsValidators from './departments';
+export * as dashboardValidators from './dashboard';
+export * as reportValidators from './report';
+export * as notificationsValidators from './notifications';
