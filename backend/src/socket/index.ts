@@ -1,31 +1,46 @@
-import { Server as HttpServer } from 'http';
+import type { Server as HttpServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
-import { env } from '../config/env';
-import { logger } from '../utils/logger';
+import { socketConfig } from '../config/socket';
+import { logger } from '../config/logger';
+import {
+  registerNotificationsNamespace,
+  registerDashboardNamespace,
+  registerActivityNamespace,
+} from './namespaces';
 
 let io: SocketServer | undefined;
 
 /**
- * Initialize the Socket.IO server.
- * Event handlers and namespaces are implemented in a later prompt.
+ * Initialize the Socket.IO server and register domain namespaces. Event
+ * payloads are implemented by the feature modules in later prompts.
  */
 export function initSocket(httpServer: HttpServer): SocketServer {
-  io = new SocketServer(httpServer, {
-    cors: { origin: env.CORS_ORIGIN },
-  });
+  io = new SocketServer(httpServer, socketConfig);
 
   io.on('connection', (socket) => {
-    logger.debug(`Socket connected: ${socket.id}`);
+    logger.debug(`root socket connected: ${socket.id}`);
     socket.on('disconnect', () => {
-      logger.debug(`Socket disconnected: ${socket.id}`);
+      logger.debug(`root socket disconnected: ${socket.id}`);
     });
   });
 
-  logger.info('Socket.IO initialized');
+  registerNotificationsNamespace(io);
+  registerDashboardNamespace(io);
+  registerActivityNamespace(io);
+
+  logger.info('Socket.IO initialized with notifications/dashboard/activity namespaces');
   return io;
 }
 
 /** Access the initialized Socket.IO server instance. */
 export function getIo(): SocketServer | undefined {
   return io;
+}
+
+/** Cleanly close the Socket.IO server. */
+export async function closeSocket(): Promise<void> {
+  if (!io) return;
+  await new Promise<void>((resolve) => io!.close(() => resolve()));
+  io = undefined;
+  logger.info('Socket.IO server closed');
 }

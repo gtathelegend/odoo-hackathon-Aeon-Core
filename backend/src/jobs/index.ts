@@ -1,10 +1,16 @@
-import { logger } from '../utils/logger';
+import { startScheduler, stopScheduler } from './scheduler';
+import { startWorker, stopWorker } from './worker';
 
-/**
- * Scheduled jobs registry placeholder.
- * Cron definitions (overdue detection, booking transitions, reminders) are
- * implemented in a later prompt.
- */
+/** Entry point invoked at server boot. */
 export function registerJobs(): void {
-  logger.info('Jobs registry initialized (no jobs scheduled yet)');
+  startScheduler();
+  startWorker();
 }
+
+/** Entry point invoked on graceful shutdown. */
+export function shutdownJobs(): void {
+  stopWorker();
+  stopScheduler();
+}
+
+export { startScheduler, stopScheduler, startWorker, stopWorker };

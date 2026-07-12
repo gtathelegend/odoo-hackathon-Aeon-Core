@@ -1,13 +1,1514 @@
-// AssetFlow Prisma schema
-// Foundation only - domain models are introduced in later prompts.
-// Connection is configured through the DATABASE_URL environment variable
-// (Neon serverless PostgreSQL).
+// ============================================================================
+// AssetFlow — Production PostgreSQL schema (Neon + Prisma)
+//
+// Design principles:
+//  - UUID primary keys everywhere (@db.Uuid)
+//  - Global audit columns on business tables:
+//      id, createdAt, updatedAt, deletedAt, createdBy, updatedBy, version, isActive
+//  - Soft deletes via deletedAt + isActive (never hard-delete core entities)
+//  - Append-only immutable *History / *Log tables
+//  - Referential integrity on all domain relationships
+//  - Indexes on foreign keys, status, tags, emails, dates and search columns
+//  - Composite indexes for hot query paths
+//
+// Actor stamp columns (createdBy, updatedBy, performedBy, requestedById, ...)
+// are stored as UUID identifiers rather than hard foreign keys to User. This
+// avoids an unmanageable fan-out of back-relations on User while preserving
+// who-did-what auditing. Core domain relationships use enforced foreign keys.
+// ============================================================================
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================== ENUMS =======================================
+
+enum UserRole {
+  EMPLOYEE
+  DEPARTMENT_HEAD
+  ASSET_MANAGER
+  ADMIN
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ALLOCATED
+  RESERVED
+  MAINTENANCE
+  LOST
+  RETIRED
+  DISPOSED
+}
+
+enum AllocationStatus {
+  PENDING
+  ACTIVE
+  RETURNED
+  OVERDUE
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum MaintenanceStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+  CANCELLED
+}
+
+enum AuditStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CLOSED
+  CANCELLED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Condition {
+  NEW
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
+enum DepartmentStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum Language {
+  EN
+  ES
+  FR
+  DE
+  HI
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+// ============================== USERS =======================================
+
+model User {
+  id                  String    @id @default(uuid()) @db.Uuid
+  email               String    @unique
+  passwordHash        String
+  firstName           String
+  lastName            String
+  phone               String?
+  role                UserRole  @default(EMPLOYEE)
+  emailVerified       Boolean   @default(false)
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  passwordResetTokenHash String?   @unique
+  passwordResetExpiresAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  userRoles               UserRole_Assignment[]
+  refreshTokens           RefreshToken[]
+  employee                Employee?
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  activityLogs            ActivityLog[]
+  loginHistory            LoginHistory[]
+  conversations           AssistantConversation[]
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  description String?
+  isSystem    Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  userRoles   UserRole_Assignment[]
+  permissions RolePermission[]
+
+  @@index([name])
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  key         String  @unique
+  description String?
+  module      String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  rolePermissions RolePermission[]
+
+  @@index([key])
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid()) @db.Uuid
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole_Assignment {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  roleId     String   @db.Uuid
+  assignedAt DateTime @default(now())
+  assignedBy String?  @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// =========================== ORGANIZATION ===================================
+
+model Department {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String
+  code        String           @unique
+  description String?
+  status      DepartmentStatus @default(ACTIVE)
+  parentId    String?          @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  parent   Department?  @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children Department[] @relation("DepartmentTree")
+
+  employees             Employee[]
+  assets                Asset[]
+  ancestorHierarchies   DepartmentHierarchy[] @relation("HierarchyAncestor")
+  descendantHierarchies DepartmentHierarchy[] @relation("HierarchyDescendant")
+
+  @@index([code])
+  @@index([parentId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("departments")
+}
+
+model DepartmentHierarchy {
+  id           String @id @default(uuid()) @db.Uuid
+  ancestorId   String @db.Uuid
+  descendantId String @db.Uuid
+  depth        Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  ancestor   Department @relation("HierarchyAncestor", fields: [ancestorId], references: [id], onDelete: Cascade)
+  descendant Department @relation("HierarchyDescendant", fields: [descendantId], references: [id], onDelete: Cascade)
+
+  @@unique([ancestorId, descendantId])
+  @@index([ancestorId])
+  @@index([descendantId])
+  @@map("department_hierarchies")
+}
+
+model Employee {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @unique @db.Uuid
+  departmentId String?   @db.Uuid
+  employeeCode String    @unique
+  designation  String?
+  joiningDate  DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  profile    EmployeeProfile?
+
+  allocations         Allocation[]
+  bookings            Booking[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@index([departmentId])
+  @@index([employeeCode])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("employees")
+}
+
+model EmployeeProfile {
+  id               String    @id @default(uuid()) @db.Uuid
+  employeeId       String    @unique @db.Uuid
+  avatarUrl        String?
+  bio              String?
+  address          String?
+  dateOfBirth      DateTime?
+  emergencyContact String?
+  skills           String[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employee_profiles")
+}
+
+// ============================== ASSETS ======================================
+
+model AssetCategory {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  code        String  @unique
+  description String?
+  parentId    String? @db.Uuid
+  maxAssets   Int?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  parent   AssetCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children AssetCategory[] @relation("CategoryTree")
+
+  assets Asset[]
+  fields AssetCategoryField[]
+
+  @@index([code])
+  @@index([parentId])
+  @@map("asset_categories")
+}
+
+model AssetCategoryField {
+  id         String   @id @default(uuid()) @db.Uuid
+  categoryId String   @db.Uuid
+  name       String
+  fieldType  String   @default("text")
+  isRequired Boolean  @default(false)
+  options    String[]
+  sortOrder  Int      @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  category AssetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, name])
+  @@index([categoryId])
+  @@map("asset_category_fields")
+}
+
+model AssetLocation {
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String
+  code     String  @unique
+  building String?
+  floor    String?
+  room     String?
+  parentId String? @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  parent   AssetLocation?  @relation("LocationTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children AssetLocation[] @relation("LocationTree")
+
+  assets Asset[]
+
+  @@index([code])
+  @@index([parentId])
+  @@map("asset_locations")
+}
+
+model Asset {
+  id             String      @id @default(uuid()) @db.Uuid
+  assetTag       String      @unique
+  serialNumber   String?     @unique
+  name           String
+  description    String?
+  categoryId     String      @db.Uuid
+  locationId     String?     @db.Uuid
+  departmentId   String?     @db.Uuid
+  status         AssetStatus @default(AVAILABLE)
+  condition      Condition   @default(GOOD)
+  purchaseCost   Decimal?    @db.Decimal(14, 2)
+  currentValue   Decimal?    @db.Decimal(14, 2)
+  purchaseDate   DateTime?
+  warrantyExpiry DateTime?
+  vendor         String?
+  manufacturer   String?
+  model          String?
+  customFields   Json?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  category   AssetCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  location   AssetLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  department Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  attachments         AssetAttachment[]
+  history             AssetHistory[]
+  statusHistory       AssetStatusHistory[]
+  qrCode              QRCode?
+  allocations         Allocation[]
+  bookings            Booking[]
+  maintenanceRequests MaintenanceRequest[]
+  transferRequests    TransferRequest[]
+  auditRecords        AuditRecord[]
+
+  @@index([assetTag])
+  @@index([serialNumber])
+  @@index([status])
+  @@index([condition])
+  @@index([categoryId])
+  @@index([departmentId])
+  @@index([locationId])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@index([status, categoryId])
+  @@index([departmentId, status])
+  @@map("assets")
+}
+
+model AssetAttachment {
+  id         String  @id @default(uuid()) @db.Uuid
+  assetId    String  @db.Uuid
+  fileName   String
+  fileUrl    String
+  fileType   String?
+  fileSize   Int?
+  uploadedBy String? @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@map("asset_attachments")
+}
+
+model AssetHistory {
+  id          String   @id @default(uuid()) @db.Uuid
+  assetId     String   @db.Uuid
+  action      String
+  changes     Json?
+  note        String?
+  performedBy String?  @db.Uuid
+  createdAt   DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([createdAt])
+  @@map("asset_histories")
+}
+
+model AssetStatusHistory {
+  id         String       @id @default(uuid()) @db.Uuid
+  assetId    String       @db.Uuid
+  fromStatus AssetStatus?
+  toStatus   AssetStatus
+  reason     String?
+  changedBy  String?      @db.Uuid
+  createdAt  DateTime     @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([createdAt])
+  @@map("asset_status_histories")
+}
+
+model QRCode {
+  id            String    @id @default(uuid()) @db.Uuid
+  assetId       String    @unique @db.Uuid
+  code          String    @unique
+  imageUrl      String?
+  scanCount     Int       @default(0)
+  lastScannedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+  @@map("qr_codes")
+}
+
+// ============================ ALLOCATION ====================================
+
+model Allocation {
+  id                  String           @id @default(uuid()) @db.Uuid
+  assetId             String           @db.Uuid
+  employeeId          String           @db.Uuid
+  allocatedBy         String?          @db.Uuid
+  status              AllocationStatus @default(PENDING)
+  allocationDate      DateTime         @default(now())
+  expectedReturnDate  DateTime?
+  actualReturnDate    DateTime?
+  allocationCondition Condition?
+  returnCondition     Condition?
+  notes               String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  history        AllocationHistory[]
+  returnRequests ReturnRequest[]
+
+  @@index([assetId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([expectedReturnDate])
+  @@index([allocationDate])
+  @@index([assetId, status])
+  @@index([employeeId, status])
+  @@map("allocations")
+}
+
+model AllocationHistory {
+  id           String            @id @default(uuid()) @db.Uuid
+  allocationId String            @db.Uuid
+  action       String
+  status       AllocationStatus?
+  note         String?
+  performedBy  String?           @db.Uuid
+  createdAt    DateTime          @default(now())
+
+  allocation Allocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+
+  @@index([allocationId])
+  @@index([createdAt])
+  @@map("allocation_histories")
+}
+
+model TransferRequest {
+  id               String         @id @default(uuid()) @db.Uuid
+  assetId          String         @db.Uuid
+  fromEmployeeId   String?        @db.Uuid
+  toEmployeeId     String?        @db.Uuid
+  fromDepartmentId String?        @db.Uuid
+  toDepartmentId   String?        @db.Uuid
+  requestedBy      String?        @db.Uuid
+  status           ApprovalStatus @default(PENDING)
+  reason           String?
+  notes            String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  asset     Asset              @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  approvals TransferApproval[]
+
+  @@index([assetId])
+  @@index([status])
+  @@map("transfer_requests")
+}
+
+model TransferApproval {
+  id                String         @id @default(uuid()) @db.Uuid
+  transferRequestId String         @db.Uuid
+  approverId        String?        @db.Uuid
+  status            ApprovalStatus @default(PENDING)
+  comment           String?
+  decidedAt         DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  transferRequest TransferRequest @relation(fields: [transferRequestId], references: [id], onDelete: Cascade)
+
+  @@index([transferRequestId])
+  @@index([status])
+  @@map("transfer_approvals")
+}
+
+model ReturnRequest {
+  id              String         @id @default(uuid()) @db.Uuid
+  allocationId    String         @db.Uuid
+  requestedBy     String?        @db.Uuid
+  status          ApprovalStatus @default(PENDING)
+  returnCondition Condition?
+  notes           String?
+  processedAt     DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  allocation Allocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+
+  @@index([allocationId])
+  @@index([status])
+  @@map("return_requests")
+}
+
+// ============================== BOOKING =====================================
+
+model SharedResource {
+  id           String  @id @default(uuid()) @db.Uuid
+  name         String
+  code         String  @unique
+  description  String?
+  resourceType String?
+  capacity     Int?
+  locationId   String? @db.Uuid
+  assetId      String? @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  bookings Booking[]
+
+  @@index([code])
+  @@index([resourceType])
+  @@map("shared_resources")
+}
+
+model Booking {
+  id               String        @id @default(uuid()) @db.Uuid
+  assetId          String?       @db.Uuid
+  sharedResourceId String?       @db.Uuid
+  employeeId       String        @db.Uuid
+  status           BookingStatus @default(PENDING)
+  startTime        DateTime
+  endTime          DateTime
+  purpose          String?
+  notes            String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  asset          Asset?          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  sharedResource SharedResource? @relation(fields: [sharedResourceId], references: [id], onDelete: Cascade)
+  employee       Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  history         BookingHistory[]
+  reminders       BookingReminder[]
+  conflicts       BookingConflict[] @relation("ConflictPrimary")
+  conflictingWith BookingConflict[] @relation("ConflictOther")
+
+  @@index([assetId])
+  @@index([sharedResourceId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([assetId, startTime, endTime])
+  @@index([sharedResourceId, startTime, endTime])
+  @@map("bookings")
+}
+
+model BookingHistory {
+  id          String         @id @default(uuid()) @db.Uuid
+  bookingId   String         @db.Uuid
+  action      String
+  status      BookingStatus?
+  note        String?
+  performedBy String?        @db.Uuid
+  createdAt   DateTime       @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([createdAt])
+  @@map("booking_histories")
+}
+
+model BookingReminder {
+  id        String              @id @default(uuid()) @db.Uuid
+  bookingId String              @db.Uuid
+  remindAt  DateTime
+  channel   NotificationChannel @default(IN_APP)
+  sent      Boolean             @default(false)
+  sentAt    DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([remindAt])
+  @@index([sent])
+  @@map("booking_reminders")
+}
+
+model BookingConflict {
+  id                   String   @id @default(uuid()) @db.Uuid
+  bookingId            String   @db.Uuid
+  conflictingBookingId String   @db.Uuid
+  resolved             Boolean  @default(false)
+  resolution           String?
+  detectedAt           DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  booking            Booking @relation("ConflictPrimary", fields: [bookingId], references: [id], onDelete: Cascade)
+  conflictingBooking Booking @relation("ConflictOther", fields: [conflictingBookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, conflictingBookingId])
+  @@index([bookingId])
+  @@index([conflictingBookingId])
+  @@map("booking_conflicts")
+}
+
+// ============================ MAINTENANCE ===================================
+
+model MaintenanceRequest {
+  id                String            @id @default(uuid()) @db.Uuid
+  assetId           String            @db.Uuid
+  requestedById     String?           @db.Uuid
+  employeeId        String?           @db.Uuid
+  status            MaintenanceStatus @default(PENDING)
+  priority          Priority          @default(MEDIUM)
+  issueType         String?
+  description       String
+  reportedCondition Condition?
+  dueDate           DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  asset    Asset     @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  assignments MaintenanceAssignment[]
+  history     MaintenanceHistory[]
+  attachments MaintenanceAttachment[]
+  resolution  MaintenanceResolution?
+
+  @@index([assetId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([status, priority])
+  @@map("maintenance_requests")
+}
+
+model MaintenanceAssignment {
+  id                   String    @id @default(uuid()) @db.Uuid
+  maintenanceRequestId String    @db.Uuid
+  technicianId         String?   @db.Uuid
+  assignedBy           String?   @db.Uuid
+  assignedAt           DateTime  @default(now())
+  acceptedAt           DateTime?
+  status               String    @default("ASSIGNED")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  request MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+
+  @@index([maintenanceRequestId])
+  @@index([technicianId])
+  @@map("maintenance_assignments")
+}
+
+model MaintenanceHistory {
+  id                   String             @id @default(uuid()) @db.Uuid
+  maintenanceRequestId String             @db.Uuid
+  action               String
+  status               MaintenanceStatus?
+  note                 String?
+  performedBy          String?            @db.Uuid
+  createdAt            DateTime           @default(now())
+
+  request MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+
+  @@index([maintenanceRequestId])
+  @@index([createdAt])
+  @@map("maintenance_histories")
+}
+
+model MaintenanceAttachment {
+  id                   String  @id @default(uuid()) @db.Uuid
+  maintenanceRequestId String  @db.Uuid
+  fileName             String
+  fileUrl              String
+  fileType             String?
+  fileSize             Int?
+  uploadedBy           String? @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  request MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+
+  @@index([maintenanceRequestId])
+  @@map("maintenance_attachments")
+}
+
+model MaintenanceResolution {
+  id                   String   @id @default(uuid()) @db.Uuid
+  maintenanceRequestId String   @unique @db.Uuid
+  resolvedBy           String?  @db.Uuid
+  resolutionNotes      String
+  cost                 Decimal? @db.Decimal(14, 2)
+  partsReplaced        String?
+  resolvedAt           DateTime @default(now())
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  request MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_resolutions")
+}
+
+// =============================== AUDIT ======================================
+
+model AuditCycle {
+  id           String      @id @default(uuid()) @db.Uuid
+  name         String
+  code         String      @unique
+  status       AuditStatus @default(PLANNED)
+  scope        String?
+  departmentId String?     @db.Uuid
+  startDate    DateTime?
+  endDate      DateTime?
+  closedAt     DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  assignments AuditAssignment[]
+  records     AuditRecord[]
+  history     AuditHistory[]
+
+  @@index([code])
+  @@index([status])
+  @@index([departmentId])
+  @@map("audit_cycles")
+}
+
+model AuditAssignment {
+  id           String   @id @default(uuid()) @db.Uuid
+  auditCycleId String   @db.Uuid
+  auditorId    String?  @db.Uuid
+  scopeNote    String?
+  assignedAt   DateTime @default(now())
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  cycle AuditCycle @relation(fields: [auditCycleId], references: [id], onDelete: Cascade)
+
+  @@index([auditCycleId])
+  @@index([auditorId])
+  @@map("audit_assignments")
+}
+
+model AuditRecord {
+  id              String     @id @default(uuid()) @db.Uuid
+  auditCycleId    String     @db.Uuid
+  assetId         String     @db.Uuid
+  status          String     @default("PENDING")
+  foundCondition  Condition?
+  foundLocationId String?    @db.Uuid
+  isVerified      Boolean    @default(false)
+  verifiedBy      String?    @db.Uuid
+  verifiedAt      DateTime?
+  note            String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  auditCycle AuditCycle @relation(fields: [auditCycleId], references: [id], onDelete: Cascade)
+  asset      Asset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  discrepancies AuditDiscrepancy[]
+
+  @@unique([auditCycleId, assetId])
+  @@index([auditCycleId])
+  @@index([assetId])
+  @@index([isVerified])
+  @@map("audit_records")
+}
+
+model AuditDiscrepancy {
+  id            String    @id @default(uuid()) @db.Uuid
+  auditRecordId String    @db.Uuid
+  type          String
+  description   String?
+  severity      Priority  @default(MEDIUM)
+  resolved      Boolean   @default(false)
+  resolvedAt    DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  record AuditRecord @relation(fields: [auditRecordId], references: [id], onDelete: Cascade)
+
+  @@index([auditRecordId])
+  @@index([severity])
+  @@map("audit_discrepancies")
+}
+
+model AuditHistory {
+  id           String       @id @default(uuid()) @db.Uuid
+  auditCycleId String       @db.Uuid
+  action       String
+  status       AuditStatus?
+  note         String?
+  performedBy  String?      @db.Uuid
+  createdAt    DateTime     @default(now())
+
+  cycle AuditCycle @relation(fields: [auditCycleId], references: [id], onDelete: Cascade)
+
+  @@index([auditCycleId])
+  @@index([createdAt])
+  @@map("audit_histories")
+}
+
+// ============================== REPORTS =====================================
+
+model SavedReport {
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String
+  ownerId  String? @db.Uuid
+  type     String
+  config   Json?
+  isShared Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  exports ReportExport[]
+
+  @@index([ownerId])
+  @@index([type])
+  @@map("saved_reports")
+}
+
+model ReportExport {
+  id            String    @id @default(uuid()) @db.Uuid
+  savedReportId String?   @db.Uuid
+  format        String    @default("PDF")
+  status        String    @default("PENDING")
+  fileUrl       String?
+  requestedBy   String?   @db.Uuid
+  completedAt   DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  report SavedReport? @relation(fields: [savedReportId], references: [id], onDelete: SetNull)
+
+  @@index([savedReportId])
+  @@index([status])
+  @@map("report_exports")
+}
+
+model DashboardWidget {
+  id         String  @id @default(uuid()) @db.Uuid
+  ownerId    String? @db.Uuid
+  title      String
+  widgetType String
+  config     Json?
+  position   Int     @default(0)
+  isVisible  Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  @@index([ownerId])
+  @@map("dashboard_widgets")
+}
+
+// =========================== NOTIFICATIONS ==================================
+
+model NotificationTemplate {
+  id      String              @id @default(uuid()) @db.Uuid
+  key     String              @unique
+  title   String
+  body    String
+  channel NotificationChannel @default(IN_APP)
+  locale  String              @default("en")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  notifications Notification[]
+
+  @@index([key])
+  @@map("notification_templates")
+}
+
+model Notification {
+  id         String             @id @default(uuid()) @db.Uuid
+  userId     String             @db.Uuid
+  templateId String?            @db.Uuid
+  title      String
+  message    String
+  status     NotificationStatus @default(PENDING)
+  priority   Priority           @default(MEDIUM)
+  type       String?
+  entityType String?
+  entityId   String?            @db.Uuid
+  readAt     DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template   NotificationTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  deliveries NotificationDelivery[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, status])
+  @@index([entityType, entityId])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id       String              @id @default(uuid()) @db.Uuid
+  userId   String              @db.Uuid
+  channel  NotificationChannel
+  category String              @default("all")
+  enabled  Boolean             @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, category])
+  @@index([userId])
+  @@map("notification_preferences")
+}
+
+model NotificationDelivery {
+  id             String              @id @default(uuid()) @db.Uuid
+  notificationId String              @db.Uuid
+  channel        NotificationChannel
+  status         NotificationStatus  @default(PENDING)
+  attempts       Int                 @default(0)
+  lastAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  error          String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([status])
+  @@map("notification_deliveries")
+}
+
+// ============================== ACTIVITY ====================================
+
+model ActivityLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  action     String
+  entityType String?
+  entityId   String?  @db.Uuid
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model SystemLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  level     String
+  message   String
+  source    String?
+  context   Json?
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @db.Uuid
+  email     String?
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([email])
+  @@index([createdAt])
+  @@map("login_histories")
+}
+
+// ================================ AI ========================================
+
+model AssistantConversation {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String  @db.Uuid
+  title  String?
+  status String  @default("ACTIVE")
+  model  String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AssistantMessage[]
+  feedback AssistantFeedback[]
+
+  @@index([userId])
+  @@map("assistant_conversations")
+}
+
+model AssistantMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @db.Uuid
+  role           String
+  content        String
+  tokens         Int?
+  createdAt      DateTime @default(now())
+
+  conversation AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  feedback     AssistantFeedback[]
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("assistant_messages")
+}
+
+model AssistantPrompt {
+  id          String  @id @default(uuid()) @db.Uuid
+  key         String  @unique
+  name        String
+  template    String
+  description String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  @@index([key])
+  @@map("assistant_prompts")
+}
+
+model AssistantFeedback {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String?  @db.Uuid
+  messageId      String?  @db.Uuid
+  userId         String?  @db.Uuid
+  rating         Int?
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  conversation AssistantConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message      AssistantMessage?      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([messageId])
+  @@map("assistant_feedback")
+}
+
+// ================================ FILES =====================================
+
+model FileStorage {
+  id       String  @id @default(uuid()) @db.Uuid
+  provider String  @default("local")
+  bucket   String?
+  key      String  @unique
+  url      String
+  checksum String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  metadata FileMetadata?
+
+  @@index([key])
+  @@index([provider])
+  @@map("file_storage")
+}
+
+model FileMetadata {
+  id            String  @id @default(uuid()) @db.Uuid
+  fileStorageId String  @unique @db.Uuid
+  originalName  String
+  mimeType      String?
+  size          Int?
+  width         Int?
+  height        Int?
+  entityType    String?
+  entityId      String? @db.Uuid
+  uploadedBy    String? @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  file FileStorage @relation(fields: [fileStorageId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@map("file_metadata")
+}
+
+// ============================== SETTINGS ====================================
+
+model OrganizationSettings {
+  id           String  @id @default(uuid()) @db.Uuid
+  name         String
+  legalName    String?
+  logoUrl      String?
+  timezone     String  @default("UTC")
+  currency     String  @default("USD")
+  dateFormat   String  @default("YYYY-MM-DD")
+  contactEmail String?
+  address      String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  @@map("organization_settings")
+}
+
+model ApplicationSettings {
+  id          String  @id @default(uuid()) @db.Uuid
+  key         String  @unique
+  value       Json
+  description String?
+  category    String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  @@index([key])
+  @@index([category])
+  @@map("application_settings")
+}
+
+model ThemeSettings {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @unique @db.Uuid
+  theme        Theme    @default(SYSTEM)
+  language     Language @default(EN)
+  primaryColor String?
+  density      String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?   @db.Uuid
+  updatedBy String?   @db.Uuid
+  version   Int       @default(1)
+  isActive  Boolean   @default(true)
+
+  @@map("theme_settings")
 }

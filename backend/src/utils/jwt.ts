@@ -1,24 +1,20 @@
 import jwt from 'jsonwebtoken';
 import type { SignOptions } from 'jsonwebtoken';
 import { env } from '../config/env';
-
-export interface JwtPayload {
-  sub: string;
-  role?: string;
-  [key: string]: unknown;
-}
-
-const ACCESS_TOKEN_TTL: SignOptions['expiresIn'] = '15m';
-const REFRESH_TOKEN_TTL: SignOptions['expiresIn'] = '7d';
+import type { JwtPayload } from '../types';
 
 /** Sign a short-lived access token. */
 export function signAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+  return jwt.sign(payload, env.JWT_SECRET, {
+    expiresIn: env.JWT_ACCESS_TTL as SignOptions['expiresIn'],
+  });
 }
 
 /** Sign a long-lived refresh token. */
 export function signRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_TTL });
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    expiresIn: env.JWT_REFRESH_TTL as SignOptions['expiresIn'],
+  });
 }
 
 /** Verify an access token and return its payload. */

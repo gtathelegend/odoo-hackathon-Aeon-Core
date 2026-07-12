@@ -1,97 +1,46 @@
 /**
  * Shared TypeScript types for the AssetFlow API foundation.
- * These are interface placeholders only - concrete domain fields are added
- * in later prompts alongside the Prisma schema.
+ *
+ * These are re-exports and lightweight aliases. Concrete domain models are
+ * derived from the Prisma schema — the frontend/API contracts live in the
+ * `interfaces` folder, and enumerations live in `constants`.
  */
 
-export enum Role {
-  EMPLOYEE = 'EMPLOYEE',
-  DEPARTMENT_HEAD = 'DEPARTMENT_HEAD',
-  ASSET_MANAGER = 'ASSET_MANAGER',
-  ADMIN = 'ADMIN',
+export type { Role } from '../constants/roles';
+
+export type {
+  AssetStatus,
+  AllocationStatus,
+  BookingStatus,
+  MaintenanceStatus,
+  AuditStatus,
+  NotificationStatus,
+  Priority,
+} from '../constants/status';
+
+export type {
+  ApiResponse,
+  ApiSuccessResponse,
+  ApiErrorResponse,
+  PaginationMeta,
+} from '../interfaces/api-response.interface';
+
+export type {
+  PaginationParams,
+  ResolvedPagination,
+  PaginatedResponse,
+} from '../interfaces/pagination.interface';
+
+export type { RequestUser } from '../interfaces/request-user.interface';
+export type { AuthenticatedRequest } from '../interfaces/authenticated-request.interface';
+
+/** JWT payload emitted by the auth module. */
+export interface JwtPayload {
+  sub: string;
+  email?: string;
+  role?: string;
+  [key: string]: unknown;
 }
 
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: Role;
-  departmentId?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Department {
-  id: string;
-  name: string;
-  parentId?: string;
-  isActive: boolean;
-}
-
-export interface Asset {
-  id: string;
-  tag: string;
-  name: string;
-  categoryId?: string;
-  status: string;
-}
-
-export interface Booking {
-  id: string;
-  assetId: string;
-  userId: string;
-  startTime: string;
-  endTime: string;
-  status: string;
-}
-
-export interface Maintenance {
-  id: string;
-  assetId: string;
-  requestedById: string;
-  status: string;
-}
-
-export interface Notification {
-  id: string;
-  userId: string;
-  message: string;
-  read: boolean;
-  createdAt: string;
-}
-
-export interface Audit {
-  id: string;
-  cycleId: string;
-  assetId: string;
-  status: string;
-}
-
-export interface Report {
-  id: string;
-  type: string;
-  generatedAt: string;
-}
-
-export interface PaginationParams {
-  page?: number;
-  limit?: number;
-}
-
-export interface PaginationMeta {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-  meta?: PaginationMeta;
-  errors?: unknown;
-}
+/** Environment-agnostic key/value dictionary. */
+export type Dictionary<T = unknown> = Record<string, T>;

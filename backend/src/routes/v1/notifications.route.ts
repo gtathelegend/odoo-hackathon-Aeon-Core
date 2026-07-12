@@ -1,9 +1,12 @@
 import { Router } from 'express';
+import { notificationsController } from '../../controllers';
 
-/**
- * Notifications routes placeholder.
- * Endpoints are implemented in a later prompt.
- */
 const router = Router();
+
+router.get('/', notificationsController.getAll);
+router.get('/:id', notificationsController.getById);
+router.post('/', notificationsController.create);
+router.put('/:id', notificationsController.update);
+router.delete('/:id', notificationsController.delete);
 
 export default router;

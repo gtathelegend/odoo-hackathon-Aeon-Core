@@ -1,0 +1,17 @@
+export { authController } from './auth.controller';
+export { usersController } from './users.controller';
+export { departmentsController } from './departments.controller';
+export { assetsController } from './assets.controller';
+export { assetCategoryController } from './asset-category.controller';
+export { assetLocationController } from './asset-location.controller';
+export { allocationController } from './allocation.controller';
+export { bookingController } from './booking.controller';
+export { maintenanceController } from './maintenance.controller';
+export { auditController } from './audit.controller';
+export { reportsController } from './reports.controller';
+export { notificationsController } from './notifications.controller';
+export { assistantController } from './assistant.controller';
+export { dashboardController } from './dashboard.controller';
+export { settingsController } from './settings.controller';
+export { createPlaceholderController } from './_placeholder.controller';
+export type { PlaceholderController } from './_placeholder.controller';
