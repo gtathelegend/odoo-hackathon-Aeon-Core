@@ -75,9 +75,24 @@ export default function BookingPage() {
 
     setMessage(null);
 
-    // Format times into Odoo Datetime UTC format: "YYYY-MM-DD HH:MM:SS"
-    // Since Odoo expects UTC datetimes, we should combine the date and time and convert them.
-    // To keep it simple, we can combine the local selectedDate and selected time.
+    // Client-side validation mirroring backend rules (Requirement 12).
+    const startDate = new Date(`${selectedDate}T${startTime}:00`);
+    const endDate = new Date(`${selectedDate}T${endTime}:00`);
+    if (endDate <= startDate) {
+      setMessage({ type: "error", text: "End time must be later than the start time." });
+      return;
+    }
+    const durationMinutes = (endDate.getTime() - startDate.getTime()) / 60000;
+    if (durationMinutes < 15) {
+      setMessage({ type: "error", text: "Minimum booking duration is 15 minutes." });
+      return;
+    }
+    if (startDate < new Date()) {
+      setMessage({ type: "error", text: "Bookings must start in the future." });
+      return;
+    }
+
+    // Format times into Odoo Datetime format: "YYYY-MM-DD HH:MM:SS".
     const startStr = `${selectedDate} ${startTime}:00`;
     const endStr = `${selectedDate} ${endTime}:00`;
 

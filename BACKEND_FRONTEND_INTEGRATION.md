@@ -346,3 +346,57 @@ frontend/
 **Status**: ✅ Backend-Frontend connection established
 **Last Updated**: Integration completion
 **Ready for**: Testing with running Odoo backend
+
+---
+
+## 🔧 Corrections Applied (Integration Review)
+
+A review against the Kiro specs and the running Odoo backend surfaced several
+integration defects that have now been fixed in `frontend/lib/api.ts` and the
+consuming pages:
+
+### Transport layer (root cause)
+- **JSON-RPC envelope unwrapping**: Odoo wraps every response in
+  `{ jsonrpc, id, result }`. The client now unwraps `result` (and flattens
+  `search_read`'s `{ length, records }` to `records[]`) so pages receive the
+  actual data array/dict instead of the envelope object.
+- **Business-error detection**: Odoo returns HTTP 200 with an `error` member for
+  `ValidationError` / `AccessError`. The client now inspects `error` and returns
+  `{ ok: false, error }`, so spec-mandated messages (duplicate serial number,
+  booking overlap, allocation conflict, self-approval, etc.) reach the UI instead
+  of being silently treated as success.
+- **Auth responses**: `login` / `signup` now honor the inner `{ ok, error }`
+  payload. Previously a failed login still redirected to the dashboard and stored
+  the raw JSON-RPC envelope in `localStorage`.
+
+### Contract / schema alignment
+- **Dashboard KPIs**: added `kpi.dashboard.get_kpis()` on the backend; the client
+  now calls it and receives the 7 computed metrics (role-scoped) in one round
+  trip, instead of calling `create` and getting a record id.
+- **Activity log**: field list corrected to the real `asset.activity.log` schema
+  (`actor_id`, `action_type`, `previous_state`, `new_state`, `occurred_at`) and
+  normalized to the shape the UI renders.
+- **Audit cycles**: now fetch `scope_type`, `location`, and `discrepancy_report`
+  so client-side scope filtering and the discrepancy banner work.
+- **Reports helpers**: `fetchUtilizationReport` / `fetchMaintenanceReport` now
+  target the real abstract-model services and methods.
+
+### Client-side validation aligned to specs
+- Booking: future start, end-after-start, and minimum 15-minute duration (Req 12).
+- Allocation: expected return date must be in the future (Req 10.2).
+- Transfer: reason capped at 500 characters (Req 11.1).
+- Maintenance: issue description bounded to 10–2000 characters (Req 13.1).
+
+The backend remains the authoritative validator; these checks improve UX and cut
+unnecessary round trips.
+
+**Verification**: `tsc --noEmit` passes for the frontend; backend module bytecode
+compiles.
+
+### Known follow-ups (not blocking)
+- **Register Asset / Add Department / Export Report** buttons are still static
+  (no create form wired yet).
+- Some status colors use dynamic Tailwind classes (e.g. `bg-${color}`) that
+  Tailwind may purge; add them to the safelist if they don't render.
+- Booking datetimes are sent as entered; if the Odoo server runs in a non-UTC
+  timezone, add explicit UTC conversion.

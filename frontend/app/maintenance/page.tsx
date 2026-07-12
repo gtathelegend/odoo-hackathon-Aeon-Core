@@ -53,8 +53,8 @@ export default function MaintenancePage() {
       setFormMessage({ type: "error", text: "Please select an asset." });
       return;
     }
-    if (description.length < 10) {
-      setFormMessage({ type: "error", text: "Description must be at least 10 characters." });
+    if (description.length < 10 || description.length > 2000) {
+      setFormMessage({ type: "error", text: "Description must be between 10 and 2000 characters." });
       return;
     }
 

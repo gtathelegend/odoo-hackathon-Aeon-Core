@@ -13,6 +13,24 @@ class KpiDashboard(models.TransientModel):
     upcoming_returns = fields.Integer(compute="_compute_kpis")
     overdue_returns = fields.Integer(compute="_compute_kpis")
 
+    @api.model
+    def get_kpis(self):
+        """Return the seven dashboard KPI values as a plain dict.
+
+        Exposed to the frontend via /web/dataset/call_kw so a single round trip
+        yields computed values (role-scoped) rather than a transient record id.
+        """
+        record = self.create({})
+        return {
+            "assets_available": record.assets_available,
+            "assets_allocated": record.assets_allocated,
+            "maintenance_today": record.maintenance_today,
+            "active_bookings": record.active_bookings,
+            "pending_transfers": record.pending_transfers,
+            "upcoming_returns": record.upcoming_returns,
+            "overdue_returns": record.overdue_returns,
+        }
+
     def _get_asset_scope_domain(self):
         user = self.env.user
         if user.has_group("assetflow_erp.group_admin") or user.has_group("assetflow_erp.group_asset_manager"):
