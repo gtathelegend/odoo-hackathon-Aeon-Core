@@ -34,9 +34,17 @@ export default function LoginPage() {
       const result = await login(email, password);
 
       if (result.ok && result.data) {
-        // Store user info in localStorage
-        localStorage.setItem("assetflow_user", JSON.stringify(result.data));
-        // Redirect to dashboard
+        // Store a clean user record (the transport layer already surfaces
+        // invalid-credential / lockout errors via result.error).
+        localStorage.setItem(
+          "assetflow_user",
+          JSON.stringify({
+            user_id: result.data.user_id,
+            name: result.data.name,
+            role: result.data.role,
+            email,
+          })
+        );
         router.push("/dashboard");
       } else {
         setError(result.error || "Login failed. Please check your credentials.");

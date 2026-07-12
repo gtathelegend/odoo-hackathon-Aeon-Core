@@ -96,6 +96,13 @@ export default function AllocationPage() {
       payload.department_id = Number(targetDeptId);
     }
     if (expectedReturn) {
+      // Expected return date must be in the future (Requirement 10.2).
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (new Date(expectedReturn) <= today) {
+        setMessage({ type: "error", text: "Expected return date must be in the future." });
+        return;
+      }
       payload.expected_return_date = expectedReturn;
     }
 
@@ -127,6 +134,10 @@ export default function AllocationPage() {
     }
     if (!transferReason.trim()) {
       setMessage({ type: "error", text: "Please provide a reason for transfer." });
+      return;
+    }
+    if (transferReason.length > 500) {
+      setMessage({ type: "error", text: "Reason must be 500 characters or fewer." });
       return;
     }
     if (!activeAllocForAsset.employee_id) {
