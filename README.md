@@ -1,102 +1,123 @@
 # AssetFlow ERP
 
-AssetFlow ERP is an Odoo-based Enterprise Asset and Resource Management System built for the Odoo Hackathon. It is designed to help organizations register, allocate, book, maintain, audit, and analyze physical assets from a single role-aware platform.
+AssetFlow ERP is an enterprise asset and shared-resource management system built for Odoo Hackathon workflows. It combines Odoo-native backend operations with a dedicated frontend shell and covers the complete journey of an asset from registration to disposal.
 
-## Project Scope
+## Vision and Scope
 
-The project covers the full operational lifecycle of shared and assigned assets across offices, schools, hospitals, factories, and similar organizations. The intended scope includes:
+AssetFlow is designed for teams that need operational control, auditability, and role-based visibility for physical assets across offices, schools, hospitals, factories, and similar environments.
 
-- secure user authentication with role-based access control
-- organization setup through department, category, and employee administration
-- asset registration, lifecycle tracking, and searchable directory views
-- employee and department allocations with overdue monitoring
-- guided transfer workflows for already-allocated assets
-- shared resource booking with overlap detection and slot suggestions
-- maintenance request handling with approval and technician workflows
-- audit cycle management with discrepancy reporting
-- KPI dashboards, analytics, exports, notifications, and activity logs
+The intended functional scope includes:
 
-## Core Features
+- secure authentication and role-based access control
+- organization setup through departments, categories, and employee directory administration
+- asset registration, lifecycle governance, and searchable asset directory
+- allocation and return workflows with overdue detection
+- transfer-request workflows for re-assignment of allocated assets
+- resource booking with overlap validation and guided conflict handling
+- maintenance request and technician workflow management
+- audit-cycle execution with discrepancy reporting
+- KPI dashboard, notifications, activity logs, and analytics/reporting
 
-### Role-Based Experience
+## Current Architecture
 
-AssetFlow supports four primary roles:
+This repository uses a split deployment model:
 
-- `Employee`: manages own bookings, maintenance requests, and personal asset visibility
-- `Department Head`: gains department-scoped visibility plus transfer approval and reporting capabilities
-- `Asset Manager`: controls asset registration, allocation, returns, maintenance approvals, and audit operations
-- `Admin`: manages departments, categories, employee roles, and global oversight
+- backend: Odoo module and backend services in [backend](./backend)
+- frontend: Next.js app in [frontend](./frontend)
 
-### Asset Lifecycle Management
+Backend deployment blueprint is configured in [render.yaml](./render.yaml), and full deployment instructions are in [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-Assets move through a controlled lifecycle:
+## Feature Coverage
 
-- `Available`
-- `Allocated`
-- `Reserved`
-- `Under Maintenance`
-- `Lost`
-- `Retired`
-- `Disposed`
+### 1) Identity and Roles
 
-Transitions are validated so the system always reflects a trustworthy operational state.
+- email-based signup with default Employee role
+- password policy validation at user creation/update
+- failed-login lockout tracking and lock window handling
+- role hierarchy support for Employee, Department Head, Asset Manager, and Admin
 
-### Smart Conflict Handling
+### 2) Organization Setup
 
-Instead of only blocking invalid actions, AssetFlow is designed to guide users through resolution:
+- department extension with hierarchy depth and circular-reference validation
+- department activation/deactivation support with logging
+- employee extension with active/inactive controls and reassignment handling
+- category model with custom fields and limits
 
-- allocation conflicts can lead directly into a pre-filled transfer request
-- booking conflicts show overlapping reservations and suggest the nearest available slot
-- users keep the data they already entered when resolving conflicts
+### 3) Asset Core
 
-### Operational Visibility
+- asset registration with generated AF-XXXX tag sequence
+- serial uniqueness and lifecycle transition validation
+- attachment limits and file-type/size validation
+- controlled state transitions across available, allocated, reserved, maintenance, lost, retired, and disposed
 
-The system provides:
+### 4) Allocation and Transfer
 
-- KPI dashboard cards for availability, allocation, maintenance, bookings, transfers, and returns
-- activity logs for state-changing actions and failed access attempts
-- in-app notifications for allocations, overdue items, booking reminders, maintenance progress, audits, and promotions
-- reports for utilization, maintenance frequency, retirement planning, department allocation, and booking heatmaps
+- allocation flow with expected-return checks and inactive-holder prevention
+- return flow with condition capture and state restoration
+- overdue detection cron with notifications
+- transfer requests with progression enforcement and re-allocation handling
 
-## Functional Modules
+### 5) Booking and Conflicts
 
-- `Authentication and RBAC`
-- `Departments and Employee Directory`
-- `Asset Categories and Custom Fields`
-- `Asset Registry and Directory`
-- `Lifecycle State Machine`
-- `Allocation and Return Tracking`
-- `Transfer Requests`
-- `Shared Resource Booking`
-- `Maintenance Workflow`
-- `Audit Cycles and Discrepancy Reports`
-- `Reports, Analytics, Notifications, and Logs`
+- time-window validation with minimum duration checks
+- overlap detection using half-open interval semantics
+- booking state transitions via scheduled jobs
+- cancellation and reminder flows
+- conflict messaging with holder and slot context
 
-## Specification Documents
+### 6) Maintenance and Audit
 
-Detailed planning documents for the project live in:
+- maintenance request lifecycle from pending to resolved/rejected
+- technician assignment and resolution notes enforcement
+- audit-cycle and audit-mark models with scope checks
+- discrepancy report generation and locked closed-cycle behavior
+
+### 7) Visibility and Operations
+
+- KPI dashboard aggregation model with role-aware scoping
+- activity log model for state-change traceability
+- in-app notification model with retry logic
+- baseline reporting service classes for utilization, maintenance, and booking views
+
+## Project Structure
+
+- [backend/assetflow_erp](./backend/assetflow_erp): Odoo module source (models, views, security, wizards, reports, tests)
+- [backend/deploy/render](./backend/deploy/render): backend container and entrypoint config
+- [frontend/app](./frontend/app): Next.js app routes and UI shell
+- [frontend/lib](./frontend/lib): frontend API utilities for backend connectivity
+- [.kiro/specs/assetflow-erp](./.kiro/specs/assetflow-erp): requirements, design, tasks, and implementation specifications
+
+## Technology Stack
+
+- Odoo 17 Community Edition
+- Python 3.10+
+- PostgreSQL 14+
+- QWeb and OWL for Odoo-native backend UI
+- Next.js for the separate frontend shell
+
+## Local Development
+
+### Backend
+
+Use the Odoo module under [backend/assetflow_erp](./backend/assetflow_erp) with an Odoo 17 + PostgreSQL setup.
+
+### Frontend
+
+From [frontend](./frontend):
+
+1. install dependencies
+2. set NEXT_PUBLIC_API_BASE_URL to your backend URL
+3. run the Next.js dev server
+
+## Specifications and Delivery Plan
+
+Authoritative project specification files:
 
 - [requirements.md](./.kiro/specs/assetflow-erp/requirements.md)
 - [design.md](./.kiro/specs/assetflow-erp/design.md)
 - [tasks.md](./.kiro/specs/assetflow-erp/tasks.md)
 - [technical-implementation.md](./.kiro/specs/assetflow-erp/technical-implementation.md)
 
-## Deployment Targets
+## Goal
 
-The repository is now prepared for split hosting:
-
-- backend on Render using [backend](./backend) and [render.yaml](./render.yaml)
-- frontend on Vercel using [frontend](./frontend)
-
-Deployment details are documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
-
-## Target Stack
-
-- `Odoo 17 Community`
-- `Python 3.10+`
-- `PostgreSQL 14+`
-- `OWL / QWeb` for Odoo web UI customizations
-
-## Outcome
-
-The goal of AssetFlow ERP is to deliver a practical, audit-friendly, and scalable asset management solution that goes beyond simple inventory tracking by combining lifecycle governance, guided conflict resolution, and real-time operational insight.
+AssetFlow ERP aims to deliver a practical, audit-friendly, and extensible operational platform that goes beyond inventory listing by enforcing lifecycle controls, guiding conflict resolution, and providing role-aware decision visibility.
