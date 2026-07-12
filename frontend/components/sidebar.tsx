@@ -1,6 +1,7 @@
 "use client";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/dashboard", icon: "dashboard", label: "Dashboard" },
@@ -16,6 +17,37 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Inactivity timeout auto-logout check (Requirement 1.8)
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      // 30 minutes = 30 * 60 * 1000 milliseconds
+      timeoutId = setTimeout(() => {
+        localStorage.removeItem("assetflow_user");
+        router.push("/login?timeout=true");
+      }, 30 * 60 * 1000);
+    };
+
+    const activityEvents = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
+    
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    // Initialize timer
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [router]);
 
   return (
     <nav className="hidden md:flex flex-col h-full py-stack-lg bg-ink fixed left-0 top-0 w-sidebar-width z-50 overflow-y-auto scrollbar-hide">

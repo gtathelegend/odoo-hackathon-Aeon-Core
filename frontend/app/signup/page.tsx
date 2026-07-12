@@ -14,15 +14,22 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const checks = {
-    len: password.length >= 8,
+    len: password.length >= 8 && password.length <= 128,
     upper: /[A-Z]/.test(password),
     lower: /[a-z]/.test(password),
-    numOrSpecial: /[\d\W]/.test(password),
+    digit: /\d/.test(password),
+    special: /[\W_]/.test(password),
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Email format validation (Requirement 1.9)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address (e.g. name@domain.com)");
+      return;
+    }
 
     // Validation
     if (password !== confirmPassword) {
@@ -30,8 +37,8 @@ export default function SignupPage() {
       return;
     }
 
-    if (!checks.len || !checks.upper || !checks.lower || !checks.numOrSpecial) {
-      setError("Password must meet all security requirements");
+    if (!checks.len || !checks.upper || !checks.lower || !checks.digit || !checks.special) {
+      setError("Password must be 8-128 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character");
       return;
     }
 
@@ -108,13 +115,13 @@ export default function SignupPage() {
                 className="w-full bg-panel border border-slate/20 rounded focus:outline-none focus:ring-2 focus:ring-ink px-3 py-2 font-body-lg text-body-lg text-on-surface disabled:opacity-50"
               />
               <div className="mt-stack-sm flex space-x-1">
-                {[checks.len, checks.upper, checks.lower, checks.numOrSpecial].map((ok, i) => (
+                {[checks.len, checks.upper, checks.lower, checks.digit, checks.special].map((ok, i) => (
                   <div key={i} className="w-8 h-1 bg-surface-variant rounded-full overflow-hidden">
                     <div className={`h-full bg-available transition-all duration-300 ${ok ? "w-full" : "w-0"}`} />
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-on-surface-variant mt-1">8+ chars, uppercase, lowercase, digit or special</p>
+              <p className="text-[10px] text-on-surface-variant mt-1">8-128 chars, upper, lower, digit & special</p>
             </div>
             <div>
               <label className="block font-body-sm text-body-sm text-on-surface-variant mb-1">Confirm Password</label>

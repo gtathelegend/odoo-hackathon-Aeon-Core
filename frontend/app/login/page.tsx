@@ -21,6 +21,13 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Email format validation (Requirement 1.9)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address (e.g. name@domain.com)");
+      return;
+    }
+
     setLoading(true);
 
     try {
