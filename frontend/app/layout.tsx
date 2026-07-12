@@ -2,14 +2,14 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AssetFlow",
-  description: "Frontend shell for AssetFlow deployed on Vercel",
+  title: "AssetFlow — Enterprise Asset Management",
+  description: "Enterprise Asset & Resource Management System",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-fog text-on-surface">{children}</body>
     </html>
   );
 }
