@@ -1,53 +1,45 @@
 # Deployment Guide
 
-This repository is prepared for split deployment:
+AssetFlow deploys as two independent applications:
 
-- backend: Odoo + AssetFlow module on Render
-- frontend: Next.js shell on Vercel
+- **backend** — Express + TypeScript API, backed by a PostgreSQL (Neon) database
+- **frontend** — Next.js app
 
-## Backend on Render
+Concrete provider configuration (Docker, platform blueprints) is added in a
+later prompt once the API surface is implemented. This document describes the
+build and runtime contract.
 
-Render Blueprint support is defined in [render.yaml](./render.yaml), which points to the backend source under [backend](./backend). Render documents that Blueprints are configured through a repo-root `render.yaml`, and that monorepos can scope a service with `rootDir` and Docker configuration. This repo uses a Docker web service plus a Render Postgres database. Source: Render Blueprint YAML Reference: https://render.com/docs/blueprint-spec
+## Backend
 
-### What is included
+Build and run:
 
-- `render.yaml` for the web service and Postgres database
-- `backend/deploy/render/Dockerfile`
-- `backend/deploy/render/entrypoint.sh`
-- `backend/deploy/render/odoo.conf`
-- backend health endpoint at `/assetflow/health`
+```bash
+cd backend
+npm install
+npm run prisma:generate
+npm run build
+npm start          # runs dist/server.js
+```
 
-### Render setup
+Required environment variables are documented in `backend/.env.example`. The
+service exposes a health check at `GET /api/v1/health`.
 
-1. In Render, create a new Blueprint from this GitHub repository.
-2. Confirm the generated `assetflow-backend` web service and `assetflow-postgres` database.
-3. On first deploy, Render will build the Docker image and start Odoo with the `assetflow_erp` module initialized.
-4. Use the public service URL as the frontend API base URL.
+## Frontend
 
-### Backend notes
+Build and run:
 
-- Persistent Odoo data is mounted at `/var/lib/odoo`.
-- The backend reads `DATABASE_URL` from Render and converts it into Odoo DB arguments.
-- The health check path is `/assetflow/health`.
-- The Odoo module path is `backend/assetflow_erp`.
+```bash
+cd frontend
+npm install
+npm run build
+npm start
+```
 
-## Frontend on Vercel
+Set `NEXT_PUBLIC_API_URL` to the deployed backend base URL, for example
+`https://assetflow-api.example.com/api/v1`.
 
-The frontend is located in [frontend](./frontend). Vercel documents that project configuration can live in `vercel.json`, and framework/build settings can also be controlled through Project Settings. Source: Vercel project configuration docs: https://vercel.com/docs/project-configuration and https://vercel.com/docs/project-configuration/vercel-json
+## Database
 
-### What is included
-
-- Next.js app in `frontend/`
-- `frontend/vercel.json`
-- backend URL environment variable support through `NEXT_PUBLIC_API_BASE_URL`
-
-### Vercel setup
-
-1. Create a new Vercel project from this repository.
-2. Set the Root Directory to `frontend`.
-3. Add environment variable `NEXT_PUBLIC_API_BASE_URL=https://<your-render-backend>`.
-4. Deploy.
-
-## Current architecture note
-
-The backend still includes Odoo-native views because they are useful for admin workflows and fast hackathon delivery. The new `frontend/` app prepares the project for a separate Vercel-hosted user-facing frontend while the Render-hosted Odoo backend remains the source of truth.
+PostgreSQL is provisioned on Neon. The connection string is supplied to the
+backend through `DATABASE_URL`. Prisma manages the schema and migrations from
+`backend/prisma/`.

@@ -1,123 +1,146 @@
-# AssetFlow ERP
+# AssetFlow
 
-AssetFlow ERP is an enterprise asset and shared-resource management system built for Odoo Hackathon workflows. It combines Odoo-native backend operations with a dedicated frontend shell and covers the complete journey of an asset from registration to disposal.
+AssetFlow is an enterprise asset and shared-resource management system. It
+covers the complete journey of an asset from registration to disposal with
+role-based access, allocation and booking workflows, maintenance, audits, and
+analytics.
 
-## Vision and Scope
+This repository is a clean, modular foundation. Business features are built
+incrementally in subsequent prompts.
 
-AssetFlow is designed for teams that need operational control, auditability, and role-based visibility for physical assets across offices, schools, hospitals, factories, and similar environments.
+## Architecture
 
-The intended functional scope includes:
+AssetFlow is a split application:
 
-- secure authentication and role-based access control
-- organization setup through departments, categories, and employee directory administration
-- asset registration, lifecycle governance, and searchable asset directory
-- allocation and return workflows with overdue detection
-- transfer-request workflows for re-assignment of allocated assets
-- resource booking with overlap validation and guided conflict handling
-- maintenance request and technician workflow management
-- audit-cycle execution with discrepancy reporting
-- KPI dashboard, notifications, activity logs, and analytics/reporting
+- **Frontend** — Next.js (App Router) + TypeScript + Tailwind
+- **Backend** — Express + TypeScript REST API (`/api/v1`)
+- **Database** — PostgreSQL (Neon serverless) via Prisma
+- **Realtime** — Socket.IO (initialized, wired in later prompts)
 
-## Current Architecture
+```
+assetflow/
+  frontend/     Next.js app (UI, services, stores, types)
+  backend/      Express + TypeScript API (modular src/)
+  database/     Database documentation (schema lives in backend/prisma)
+  docs/         Product and technical documentation
+  scripts/      Automation and developer scripts
+  .github/      CI workflows
+```
 
-This repository uses a split deployment model:
+## Folder Structure
 
-- backend: Odoo module and backend services in [backend](./backend)
-- frontend: Next.js app in [frontend](./frontend)
+### Frontend (`frontend/`)
 
-Backend deployment blueprint is configured in [render.yaml](./render.yaml), and full deployment instructions are in [DEPLOYMENT.md](./DEPLOYMENT.md).
+```
+app/          Next.js routes (compose components only)
+components/    Shared UI components
+features/      Feature-scoped components and logic
+hooks/         Reusable React hooks
+services/      API service layer (grouped by domain)
+store/         Zustand stores
+types/         Shared TypeScript types
+lib/           API client and low-level utilities
+styles/        Global and shared styles
+constants/     App-wide constants
+utils/         Helper functions
+```
 
-## Feature Coverage
+### Backend (`backend/`)
 
-### 1) Identity and Roles
+```
+src/
+  config/       Environment, database, app config
+  controllers/  Request handlers (later prompts)
+  services/     Business logic (later prompts)
+  repositories/ Data access (later prompts)
+  routes/       Versioned route definitions (/api/v1)
+  middleware/   auth, role, validation, error, logger, rateLimiter, upload
+  validators/   Zod schemas (later prompts)
+  types/        Shared types
+  interfaces/   Shared interfaces
+  models/       Domain models (later prompts)
+  utils/        jwt, date, logger, response, pagination, errors, validators
+  jobs/         Scheduled jobs (later prompts)
+  socket/       Socket.IO setup
+  docs/         API documentation
+prisma/         schema.prisma + seed.ts
+tests/          Test suites (later prompts)
+uploads/        File upload target
+logs/           error.log + combined.log
+```
 
-- email-based signup with default Employee role
-- password policy validation at user creation/update
-- failed-login lockout tracking and lock window handling
-- role hierarchy support for Employee, Department Head, Asset Manager, and Admin
+## Tech Stack
 
-### 2) Organization Setup
+- Node.js + Express + TypeScript (strict)
+- Prisma ORM + PostgreSQL (Neon)
+- Zod, Helmet, CORS, Morgan, Winston
+- bcrypt, jsonwebtoken, multer, socket.io
+- Next.js 14, React 18, Tailwind CSS, Zustand
+- ESLint + Prettier
 
-- department extension with hierarchy depth and circular-reference validation
-- department activation/deactivation support with logging
-- employee extension with active/inactive controls and reassignment handling
-- category model with custom fields and limits
-
-### 3) Asset Core
-
-- asset registration with generated AF-XXXX tag sequence
-- serial uniqueness and lifecycle transition validation
-- attachment limits and file-type/size validation
-- controlled state transitions across available, allocated, reserved, maintenance, lost, retired, and disposed
-
-### 4) Allocation and Transfer
-
-- allocation flow with expected-return checks and inactive-holder prevention
-- return flow with condition capture and state restoration
-- overdue detection cron with notifications
-- transfer requests with progression enforcement and re-allocation handling
-
-### 5) Booking and Conflicts
-
-- time-window validation with minimum duration checks
-- overlap detection using half-open interval semantics
-- booking state transitions via scheduled jobs
-- cancellation and reminder flows
-- conflict messaging with holder and slot context
-
-### 6) Maintenance and Audit
-
-- maintenance request lifecycle from pending to resolved/rejected
-- technician assignment and resolution notes enforcement
-- audit-cycle and audit-mark models with scope checks
-- discrepancy report generation and locked closed-cycle behavior
-
-### 7) Visibility and Operations
-
-- KPI dashboard aggregation model with role-aware scoping
-- activity log model for state-change traceability
-- in-app notification model with retry logic
-- baseline reporting service classes for utilization, maintenance, and booking views
-
-## Project Structure
-
-- [backend/assetflow_erp](./backend/assetflow_erp): Odoo module source (models, views, security, wizards, reports, tests)
-- [backend/deploy/render](./backend/deploy/render): backend container and entrypoint config
-- [frontend/app](./frontend/app): Next.js app routes and UI shell
-- [frontend/lib](./frontend/lib): frontend API utilities for backend connectivity
-- [.kiro/specs/assetflow-erp](./.kiro/specs/assetflow-erp): requirements, design, tasks, and implementation specifications
-
-## Technology Stack
-
-- Odoo 17 Community Edition
-- Python 3.10+
-- PostgreSQL 14+
-- QWeb and OWL for Odoo-native backend UI
-- Next.js for the separate frontend shell
-
-## Local Development
+## Getting Started
 
 ### Backend
 
-Use the Odoo module under [backend/assetflow_erp](./backend/assetflow_erp) with an Odoo 17 + PostgreSQL setup.
+```bash
+cd backend
+npm install
+cp .env.example .env      # fill in DATABASE_URL, JWT secrets, etc.
+npm run prisma:generate
+npm run dev               # starts the API on PORT (default 5000)
+```
+
+Verify the health endpoint:
+
+```bash
+curl http://localhost:5000/api/v1/health
+# {"status":"ok","version":"2.0.0","service":"AssetFlow API"}
+```
 
 ### Frontend
 
-From [frontend](./frontend):
+```bash
+cd frontend
+npm install
+cp .env.example .env.local   # set NEXT_PUBLIC_API_URL
+npm run dev                  # starts Next.js on port 3000
+```
 
-1. install dependencies
-2. set NEXT_PUBLIC_API_BASE_URL to your backend URL
-3. run the Next.js dev server
+## Environment Variables
 
-## Specifications and Delivery Plan
+### Backend (`backend/.env`)
 
-Authoritative project specification files:
+| Variable             | Description                                  |
+| -------------------- | -------------------------------------------- |
+| `PORT`               | API port (default 5000)                      |
+| `DATABASE_URL`       | Neon PostgreSQL connection string            |
+| `JWT_SECRET`         | Access token signing secret                  |
+| `JWT_REFRESH_SECRET` | Refresh token signing secret                 |
+| `GROK_API_KEY`       | AI assistant API key                         |
+| `RESEND_API_KEY`     | Email delivery API key                       |
+| `CLOUDINARY_URL`     | Media storage connection URL                 |
+| `CORS_ORIGIN`        | Allowed origin(s) for CORS                   |
+| `LOG_LEVEL`          | Winston log level                            |
+| `NODE_ENV`           | `development` \| `test` \| `production`      |
 
-- [requirements.md](./.kiro/specs/assetflow-erp/requirements.md)
-- [design.md](./.kiro/specs/assetflow-erp/design.md)
-- [tasks.md](./.kiro/specs/assetflow-erp/tasks.md)
-- [technical-implementation.md](./.kiro/specs/assetflow-erp/technical-implementation.md)
+### Frontend (`frontend/.env.local`)
 
-## Goal
+| Variable                | Description                          |
+| ----------------------- | ------------------------------------ |
+| `NEXT_PUBLIC_API_URL`   | Base URL of the AssetFlow API        |
+| `NEXT_PUBLIC_APP_NAME`  | Application name (default AssetFlow) |
+| `NEXT_PUBLIC_GROK_MODEL`| AI model identifier                  |
 
-AssetFlow ERP aims to deliver a practical, audit-friendly, and extensible operational platform that goes beyond inventory listing by enforcing lifecycle controls, guiding conflict resolution, and providing role-aware decision visibility.
+Never hardcode secrets. Use `.env` files (git-ignored) based on `.env.example`.
+
+## Development Workflow
+
+1. Create a feature branch.
+2. Backend: `npm run lint`, `npm run typecheck`, `npm run build`.
+3. Frontend: `npm run lint`, `npm run build`.
+4. Commit using conventional commits (e.g. `feat(assets): ...`).
+5. Open a pull request. CI runs lint + build for both apps.
+
+## Specifications
+
+Authoritative specs live under [.kiro/specs/assetflow-erp](./.kiro/specs/assetflow-erp).

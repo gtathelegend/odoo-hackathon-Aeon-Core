@@ -1,7 +1,6 @@
 "use client";
-import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/dashboard", icon: "dashboard", label: "Dashboard" },
@@ -17,37 +16,6 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  // Inactivity timeout auto-logout check (Requirement 1.8)
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    const resetTimer = () => {
-      clearTimeout(timeoutId);
-      // 30 minutes = 30 * 60 * 1000 milliseconds
-      timeoutId = setTimeout(() => {
-        localStorage.removeItem("assetflow_user");
-        router.push("/login?timeout=true");
-      }, 30 * 60 * 1000);
-    };
-
-    const activityEvents = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
-    
-    activityEvents.forEach((event) => {
-      window.addEventListener(event, resetTimer);
-    });
-
-    // Initialize timer
-    resetTimer();
-
-    return () => {
-      clearTimeout(timeoutId);
-      activityEvents.forEach((event) => {
-        window.removeEventListener(event, resetTimer);
-      });
-    };
-  }, [router]);
 
   return (
     <nav className="hidden md:flex flex-col h-full py-stack-lg bg-ink fixed left-0 top-0 w-sidebar-width z-50 overflow-y-auto scrollbar-hide">
@@ -80,17 +48,10 @@ export default function Sidebar() {
       </div>
 
       <div className="mt-auto border-t border-on-primary-container/20 pt-4 px-2 space-y-1">
-        <Link
-          href="/settings"
-          className={`flex items-center gap-3 px-4 py-3 text-body-sm font-body-sm transition-all ${
-            pathname === "/settings"
-              ? "bg-white/10 text-on-primary border-l-4 border-available"
-              : "text-on-primary/60 hover:text-on-primary hover:bg-white/10"
-          }`}
-        >
+        <a href="#" className="flex items-center gap-3 text-on-primary/60 hover:text-on-primary px-4 py-3 hover:bg-white/10 transition-all text-body-sm font-body-sm">
           <span className="material-symbols-outlined">settings</span>
           <span>Settings</span>
-        </Link>
+        </a>
         <Link href="/login" className="flex items-center gap-3 text-on-primary/60 hover:text-on-primary px-4 py-3 hover:bg-white/10 transition-all text-body-sm font-body-sm">
           <span className="material-symbols-outlined">logout</span>
           <span>Logout</span>

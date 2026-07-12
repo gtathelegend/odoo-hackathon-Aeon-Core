@@ -4,7 +4,14 @@ dist/
 .vercel/
 .env
 .env.local
-*.pyc
-__pycache__/
-odoo-data/
-postgres-data/
+
+# Logs
+*.log
+backend/logs/*.log
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# OS / editor
+.DS_Store
