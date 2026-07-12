@@ -81,6 +81,15 @@ Detailed planning documents for the project live in:
 - [tasks.md](./.kiro/specs/assetflow-erp/tasks.md)
 - [technical-implementation.md](./.kiro/specs/assetflow-erp/technical-implementation.md)
 
+## Deployment Targets
+
+The repository is now prepared for split hosting:
+
+- backend on Render using [render.yaml](./render.yaml)
+- frontend on Vercel using [frontend](./frontend)
+
+Deployment details are documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
+
 ## Target Stack
 
 - `Odoo 17 Community`

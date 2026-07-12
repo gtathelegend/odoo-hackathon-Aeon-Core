@@ -3,6 +3,10 @@ from odoo.http import request
 
 
 class AssetflowAuthController(http.Controller):
+    @http.route("/assetflow/health", type="http", auth="public", methods=["GET"], csrf=False, cors="*")
+    def assetflow_health(self, **_kwargs):
+        return request.make_json_response({"ok": True, "service": "assetflow-backend"})
+
     @http.route("/assetflow/signup", type="json", auth="public", methods=["POST"], csrf=False)
     def assetflow_signup(self, **payload):
         login = payload.get("email")
