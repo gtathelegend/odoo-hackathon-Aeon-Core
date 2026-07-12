@@ -1,0 +1,15 @@
+export { authService } from './auth.service';
+export { usersService } from './users.service';
+export { departmentsService } from './departments.service';
+export { assetsService } from './assets.service';
+export { allocationService } from './allocation.service';
+export { bookingService } from './booking.service';
+export { maintenanceService } from './maintenance.service';
+export { auditService } from './audit.service';
+export { reportsService } from './reports.service';
+export { notificationsService } from './notifications.service';
+export { assistantService } from './assistant.service';
+export { dashboardService } from './dashboard.service';
+export { settingsService } from './settings.service';
+export { createPlaceholderService } from './_placeholder.service';
+export type { PlaceholderService } from './_placeholder.service';

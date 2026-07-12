@@ -1,9 +1,9 @@
 import type { NextFunction, RequestHandler, Response } from 'express';
 import type { AuthenticatedRequest } from '../interfaces';
-import type { Role } from '../types';
+import type { Role } from '../constants/roles';
 
 /**
- * Role-based access control middleware factory placeholder.
+ * Role-based authorization middleware factory placeholder.
  * Enforcement logic is implemented in a later prompt.
  */
 export function requireRole(..._roles: Role[]): RequestHandler {
@@ -12,3 +12,6 @@ export function requireRole(..._roles: Role[]): RequestHandler {
     next();
   };
 }
+
+/** Alias for teams that prefer the `authorize` naming. */
+export const authorize = requireRole;

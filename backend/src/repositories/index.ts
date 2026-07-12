@@ -1,0 +1,15 @@
+export { authRepository } from './auth.repository';
+export { usersRepository } from './users.repository';
+export { departmentsRepository } from './departments.repository';
+export { assetsRepository } from './assets.repository';
+export { allocationRepository } from './allocation.repository';
+export { bookingRepository } from './booking.repository';
+export { maintenanceRepository } from './maintenance.repository';
+export { auditRepository } from './audit.repository';
+export { reportsRepository } from './reports.repository';
+export { notificationsRepository } from './notifications.repository';
+export { assistantRepository } from './assistant.repository';
+export { dashboardRepository } from './dashboard.repository';
+export { settingsRepository } from './settings.repository';
+export { createPlaceholderRepository, prisma } from './_placeholder.repository';
+export type { PlaceholderRepository } from './_placeholder.repository';

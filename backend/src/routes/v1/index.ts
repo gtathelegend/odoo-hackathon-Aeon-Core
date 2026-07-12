@@ -1,5 +1,9 @@
 import { Router } from 'express';
+import { ROUTES } from '../../constants/routes';
+
 import healthRoute from './health.route';
+import versionRoute from './version.route';
+import statusRoute from './status.route';
 import authRoute from './auth.route';
 import usersRoute from './users.route';
 import departmentsRoute from './departments.route';
@@ -17,19 +21,21 @@ import settingsRoute from './settings.route';
 /** Aggregates all v1 routes under the /api/v1 prefix. */
 const router = Router();
 
-router.use('/health', healthRoute);
-router.use('/auth', authRoute);
-router.use('/users', usersRoute);
-router.use('/departments', departmentsRoute);
-router.use('/assets', assetsRoute);
-router.use('/allocation', allocationRoute);
-router.use('/booking', bookingRoute);
-router.use('/maintenance', maintenanceRoute);
-router.use('/audit', auditRoute);
-router.use('/reports', reportsRoute);
-router.use('/notifications', notificationsRoute);
-router.use('/assistant', assistantRoute);
-router.use('/dashboard', dashboardRoute);
-router.use('/settings', settingsRoute);
+router.use(ROUTES.HEALTH, healthRoute);
+router.use(ROUTES.VERSION, versionRoute);
+router.use(ROUTES.STATUS, statusRoute);
+router.use(ROUTES.AUTH, authRoute);
+router.use(ROUTES.USERS, usersRoute);
+router.use(ROUTES.DEPARTMENTS, departmentsRoute);
+router.use(ROUTES.ASSETS, assetsRoute);
+router.use(ROUTES.ALLOCATION, allocationRoute);
+router.use(ROUTES.BOOKING, bookingRoute);
+router.use(ROUTES.MAINTENANCE, maintenanceRoute);
+router.use(ROUTES.AUDIT, auditRoute);
+router.use(ROUTES.REPORTS, reportsRoute);
+router.use(ROUTES.NOTIFICATIONS, notificationsRoute);
+router.use(ROUTES.ASSISTANT, assistantRoute);
+router.use(ROUTES.DASHBOARD, dashboardRoute);
+router.use(ROUTES.SETTINGS, settingsRoute);
 
 export default router;

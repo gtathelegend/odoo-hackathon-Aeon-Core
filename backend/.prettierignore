@@ -1,5 +1,7 @@
 dist
 node_modules
-prisma/migrations
+coverage
 logs
 uploads
+*.log
+prisma/migrations

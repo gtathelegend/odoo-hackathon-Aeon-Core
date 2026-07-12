@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { isProduction } from './env';
-import { logger } from '../utils/logger';
+import { logger } from './logger';
 
 /**
  * Prisma client singleton. Reused across the app to avoid exhausting the
@@ -20,6 +20,7 @@ if (!isProduction) {
   globalForPrisma.prisma = prisma;
 }
 
+/** Establish the database connection. Throws when the database is unreachable. */
 export async function connectDatabase(): Promise<void> {
   try {
     await prisma.$connect();
@@ -30,7 +31,20 @@ export async function connectDatabase(): Promise<void> {
   }
 }
 
+/** Cleanly close the database connection. */
 export async function disconnectDatabase(): Promise<void> {
   await prisma.$disconnect();
   logger.info('Database connection closed');
+}
+
+/** Lightweight probe used by the health endpoint. */
+export async function checkDatabase(): Promise<{ connected: boolean; latencyMs: number | null }> {
+  const started = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return { connected: true, latencyMs: Date.now() - started };
+  } catch (error) {
+    logger.error('Database health check failed', { error });
+    return { connected: false, latencyMs: null };
+  }
 }

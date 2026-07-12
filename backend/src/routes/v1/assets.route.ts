@@ -1,9 +1,12 @@
 import { Router } from 'express';
+import { assetsController } from '../../controllers';
 
-/**
- * Assets routes placeholder.
- * Endpoints are implemented in a later prompt.
- */
 const router = Router();
+
+router.get('/', assetsController.getAll);
+router.get('/:id', assetsController.getById);
+router.post('/', assetsController.create);
+router.put('/:id', assetsController.update);
+router.delete('/:id', assetsController.delete);
 
 export default router;

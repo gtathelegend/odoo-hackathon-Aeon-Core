@@ -1,6 +1,6 @@
 import morgan from 'morgan';
 import type { RequestHandler } from 'express';
-import { httpLogStream } from '../utils/logger';
+import { httpLogStream } from '../config/logger';
 import { isProduction } from '../config/env';
 
 /** HTTP request logging middleware wired into the winston logger. */

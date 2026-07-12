@@ -15,7 +15,19 @@ export function addDays(date: Date, days: number): Date {
   return result;
 }
 
+/** Add a number of minutes to a date and return the new date. */
+export function addMinutes(date: Date, minutes: number): Date {
+  const result = new Date(date);
+  result.setMinutes(result.getMinutes() + minutes);
+  return result;
+}
+
 /** Return true when the given date is strictly in the past. */
 export function isPast(date: Date | string | number): boolean {
   return new Date(date).getTime() < Date.now();
+}
+
+/** Return the difference between two dates in whole milliseconds. */
+export function diffMs(a: Date | string | number, b: Date | string | number): number {
+  return new Date(a).getTime() - new Date(b).getTime();
 }
