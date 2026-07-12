@@ -13,9 +13,20 @@
         </field>
     </record>
 
+    <record id="view_asset_booking_calendar" model="ir.ui.view">
+        <field name="name">asset.booking.calendar</field>
+        <field name="model">asset.booking</field>
+        <field name="arch" type="xml">
+            <calendar string="Bookings" date_start="start_time" date_stop="end_time" color="asset_id" quick_create="0">
+                <field name="booker_id"/>
+                <field name="asset_id"/>
+            </calendar>
+        </field>
+    </record>
+
     <record id="action_asset_booking" model="ir.actions.act_window">
         <field name="name">Bookings</field>
         <field name="res_model">asset.booking</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">calendar,tree,form</field>
     </record>
 </odoo>

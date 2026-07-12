@@ -43,4 +43,11 @@
         <field name="domain_force">[('recipient_id','=',user.id)]</field>
         <field name="groups" eval="[(4, ref('assetflow_erp.group_employee'))]"/>
     </record>
+
+    <record id="asset_rule_manager_all" model="ir.rule">
+        <field name="name">Asset Manager All Scope</field>
+        <field name="model_id" ref="model_asset_asset"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('assetflow_erp.group_asset_manager')), (4, ref('assetflow_erp.group_admin'))]"/>
+    </record>
 </odoo>
