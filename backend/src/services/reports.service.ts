@@ -2,7 +2,7 @@ import { reportsRepository } from '../repositories/reports.repository';
 import { buildPaginationMeta, resolvePagination } from '../utils/pagination';
 import { AuthorizationError, NotFoundError } from '../utils/errors';
 import { logActivity } from './activity.service';
-import { ROLES, hasRoleAtLeast, type Role } from '../constants/roles';
+import { ROLES, hasRoleAtLeast } from '../constants/roles';
 import type { RequestUser } from '../interfaces/request-user.interface';
 import type {
   CreateSavedReportInput,
@@ -206,10 +206,10 @@ export const reportsService = {
       type: input.type,
       ownerId: user.id,
       isShared: input.isShared,
-      config: Object.keys(config).length > 0 ? config : undefined,
+      config: Object.keys(config).length > 0 ? (config as Record<string, unknown>) : undefined,
       createdBy: user.id,
       updatedBy: user.id,
-    });
+    } as Parameters<typeof reportsRepository.createSaved>[0]);
 
     void logActivity({
       action: 'report.created',
@@ -241,9 +241,9 @@ export const reportsService = {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.type !== undefined ? { type: input.type } : {}),
       ...(input.isShared !== undefined ? { isShared: input.isShared } : {}),
-      config: Object.keys(config).length > 0 ? config : undefined,
+      config: Object.keys(config).length > 0 ? (config as Record<string, unknown>) : undefined,
       updatedBy: user.id,
-    });
+    } as Parameters<typeof reportsRepository.updateSaved>[1]);
 
     void logActivity({
       action: 'report.updated',
@@ -407,7 +407,8 @@ export const reportsService = {
         const filters = (config.filters ?? {}) as ReportFilters;
         const rows = await runDataset(report.type as ReportType, filters);
         const format = (schedule.format ?? 'csv') as ExportFormat;
-        const exported = formatExport(rows, format, report.name);
+        // Generate export (file could be stored in cloud storage in production)
+        formatExport(rows, format, report.name);
 
         await reportsRepository.createExport({
           savedReportId: report.id,
