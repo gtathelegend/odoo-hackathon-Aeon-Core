@@ -1,0 +1,22 @@
+<odoo>
+    <record id="view_asset_allocation_tree" model="ir.ui.view">
+        <field name="name">asset.allocation.tree</field>
+        <field name="model">asset.allocation</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="asset_id"/>
+                <field name="holder_type"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="status"/>
+                <field name="expected_return_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_asset_allocation" model="ir.actions.act_window">
+        <field name="name">Allocations</field>
+        <field name="res_model">asset.allocation</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>
