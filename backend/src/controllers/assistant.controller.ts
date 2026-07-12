@@ -82,21 +82,21 @@ export const assistantController = {
   /** GET /assistant/conversations/:id — Get a single conversation with messages. */
   getConversation: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) throw new AuthenticationError();
-    const result = await assistantService.getConversation(req.params.id, req.user.id);
+    const result = await assistantService.getConversation(req.params.id!, req.user.id);
     sendSuccess(res, result);
   }),
 
   /** PATCH /assistant/conversations/:id — Update title or status. */
   updateConversation: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) throw new AuthenticationError();
-    await assistantService.updateConversation(req.params.id, req.user.id, req.body);
+    await assistantService.updateConversation(req.params.id!, req.user.id, req.body);
     sendSuccess(res, null, 'Conversation updated');
   }),
 
   /** DELETE /assistant/conversations/:id — Soft-delete a conversation. */
   deleteConversation: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) throw new AuthenticationError();
-    await assistantService.deleteConversation(req.params.id, req.user.id);
+    await assistantService.deleteConversation(req.params.id!, req.user.id);
     sendSuccess(res, null, 'Conversation deleted');
   }),
 
