@@ -85,7 +85,7 @@ Detailed planning documents for the project live in:
 
 The repository is now prepared for split hosting:
 
-- backend on Render using [render.yaml](./render.yaml)
+- backend on Render using [backend](./backend) and [render.yaml](./render.yaml)
 - frontend on Vercel using [frontend](./frontend)
 
 Deployment details are documented in [DEPLOYMENT.md](./DEPLOYMENT.md).

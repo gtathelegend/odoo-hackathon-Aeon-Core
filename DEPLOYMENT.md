@@ -7,14 +7,14 @@ This repository is prepared for split deployment:
 
 ## Backend on Render
 
-Render Blueprint support is defined in [render.yaml](./render.yaml). Render documents that Blueprints are configured through a repo-root `render.yaml`, and that monorepos can scope a service with `rootDir` and Docker configuration. This repo uses a Docker web service plus a Render Postgres database. Source: Render Blueprint YAML Reference: https://render.com/docs/blueprint-spec
+Render Blueprint support is defined in [render.yaml](./render.yaml), which points to the backend source under [backend](./backend). Render documents that Blueprints are configured through a repo-root `render.yaml`, and that monorepos can scope a service with `rootDir` and Docker configuration. This repo uses a Docker web service plus a Render Postgres database. Source: Render Blueprint YAML Reference: https://render.com/docs/blueprint-spec
 
 ### What is included
 
 - `render.yaml` for the web service and Postgres database
-- `deploy/render/Dockerfile`
-- `deploy/render/entrypoint.sh`
-- `deploy/render/odoo.conf`
+- `backend/deploy/render/Dockerfile`
+- `backend/deploy/render/entrypoint.sh`
+- `backend/deploy/render/odoo.conf`
 - backend health endpoint at `/assetflow/health`
 
 ### Render setup
@@ -29,6 +29,7 @@ Render Blueprint support is defined in [render.yaml](./render.yaml). Render docu
 - Persistent Odoo data is mounted at `/var/lib/odoo`.
 - The backend reads `DATABASE_URL` from Render and converts it into Odoo DB arguments.
 - The health check path is `/assetflow/health`.
+- The Odoo module path is `backend/assetflow_erp`.
 
 ## Frontend on Vercel
 

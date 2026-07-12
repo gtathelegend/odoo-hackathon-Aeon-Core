@@ -2,7 +2,7 @@ services:
   - type: web
     name: assetflow-backend
     runtime: docker
-    rootDir: backend
+    rootDir: .
     dockerfilePath: ./deploy/render/Dockerfile
     dockerContext: .
     plan: free
