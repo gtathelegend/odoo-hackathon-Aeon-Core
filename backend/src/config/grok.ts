@@ -1,13 +1,13 @@
 import { env } from './env';
 
 /**
- * Grok AI configuration. Uses the xAI API with Grok model.
+ * Groq AI configuration. Uses the Groq API for fast LLM inference.
  * Compatible with OpenAI-style API calls.
  */
 export const grokConfig = {
   apiKey: env.GROK_API_KEY || '',
-  baseUrl: 'https://api.x.ai/v1',
-  model: 'grok-3-mini-fast',
+  baseUrl: 'https://api.groq.com/openai/v1',
+  model: 'llama-3.1-8b-instant',
   maxTokens: 2048,
   temperature: 0.7,
   /** System prompt for the AssetFlow AI assistant */

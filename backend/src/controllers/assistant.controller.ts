@@ -36,8 +36,10 @@ export const assistantController = {
         res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
       }
       res.write('data: [DONE]\n\n');
-    } catch (error) {
-      res.write(`data: ${JSON.stringify({ error: 'Stream interrupted' })}\n\n`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Stream interrupted';
+      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+      res.write('data: [DONE]\n\n');
     }
     res.end();
   }),

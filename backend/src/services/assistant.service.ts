@@ -171,9 +171,10 @@ export const assistantService = {
         max_tokens: grokConfig.maxTokens,
         temperature: grokConfig.temperature,
       });
-    } catch (error) {
-      logger.error('Grok API call failed', { error });
-      throw new ValidationError('AI service is temporarily unavailable. Please try again later.');
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown AI error';
+      logger.error('Groq API call failed', { error: errMsg });
+      throw new ValidationError(`AI service error: ${errMsg}`);
     }
 
     const content = completion.choices[0]?.message?.content ?? 'I could not generate a response.';
