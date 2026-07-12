@@ -1,15 +1,12 @@
 import { Router } from 'express';
 import { assistantController } from '../../controllers';
-import { authMiddleware } from '../../middleware';
-import { validate } from '../../middleware';
-import { createRateLimiter } from '../../middleware';
+import { authMiddleware, validate, createRateLimiter } from '../../middleware';
 import {
   chatMessageSchema,
   nlSearchSchema,
   summarySchema,
   feedbackSchema,
   promptUpsertSchema,
-  conversationListSchema,
 } from '../../validators/assistant';
 
 const router = Router();
@@ -29,12 +26,12 @@ router.use(authMiddleware);
 router.use(aiRateLimiter);
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
-router.post('/chat', validate({ body: chatMessageSchema }), assistantController.chat);
-router.post('/chat/stream', validate({ body: chatMessageSchema }), assistantController.chatStream);
+router.post('/chat', validate(chatMessageSchema), assistantController.chat);
+router.post('/chat/stream', validate(chatMessageSchema), assistantController.chatStream);
 
 // ─── Search & Intelligence ────────────────────────────────────────────────────
-router.post('/search', validate({ body: nlSearchSchema }), assistantController.search);
-router.post('/summary', validate({ body: summarySchema }), assistantController.summary);
+router.post('/search', validate(nlSearchSchema), assistantController.search);
+router.post('/summary', validate(summarySchema), assistantController.summary);
 router.get('/recommendations/:type', assistantController.recommendations);
 
 // ─── Conversations ────────────────────────────────────────────────────────────
@@ -44,12 +41,12 @@ router.patch('/conversations/:id', assistantController.updateConversation);
 router.delete('/conversations/:id', assistantController.deleteConversation);
 
 // ─── Feedback ─────────────────────────────────────────────────────────────────
-router.post('/feedback', validate({ body: feedbackSchema }), assistantController.feedback);
+router.post('/feedback', validate(feedbackSchema), assistantController.feedback);
 router.get('/feedback/stats', assistantController.feedbackStats);
 
 // ─── Prompts (admin) ──────────────────────────────────────────────────────────
 router.get('/prompts', assistantController.listPrompts);
-router.put('/prompts', validate({ body: promptUpsertSchema }), assistantController.upsertPrompt);
+router.put('/prompts', validate(promptUpsertSchema), assistantController.upsertPrompt);
 
 // ─── Settings (admin) ─────────────────────────────────────────────────────────
 router.get('/settings', assistantController.getSettings);

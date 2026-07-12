@@ -306,9 +306,9 @@ export const reportsService = {
     await reportsRepository.createExport({
       format: input.format,
       status: 'COMPLETED',
-      rowCount: rows.length,
       fileUrl: null,
       completedAt: new Date(),
+      requestedBy: user.id,
       createdBy: user.id,
     });
 
@@ -341,9 +341,9 @@ export const reportsService = {
       savedReportId: id,
       format,
       status: 'COMPLETED',
-      rowCount: rows.length,
       fileUrl: null,
       completedAt: new Date(),
+      requestedBy: user.id,
       createdBy: user.id,
     });
 
@@ -413,9 +413,9 @@ export const reportsService = {
           savedReportId: report.id,
           format,
           status: 'COMPLETED',
-          rowCount: rows.length,
           fileUrl: null,
           completedAt: new Date(),
+          requestedBy: report.ownerId,
           createdBy: report.ownerId,
         });
 
