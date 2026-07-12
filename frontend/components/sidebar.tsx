@@ -48,10 +48,17 @@ export default function Sidebar() {
       </div>
 
       <div className="mt-auto border-t border-on-primary-container/20 pt-4 px-2 space-y-1">
-        <a href="#" className="flex items-center gap-3 text-on-primary/60 hover:text-on-primary px-4 py-3 hover:bg-white/10 transition-all text-body-sm font-body-sm">
+        <Link
+          href="/settings"
+          className={`flex items-center gap-3 px-4 py-3 text-body-sm font-body-sm transition-all ${
+            pathname === "/settings"
+              ? "bg-white/10 text-on-primary border-l-4 border-available"
+              : "text-on-primary/60 hover:text-on-primary hover:bg-white/10"
+          }`}
+        >
           <span className="material-symbols-outlined">settings</span>
           <span>Settings</span>
-        </a>
+        </Link>
         <Link href="/login" className="flex items-center gap-3 text-on-primary/60 hover:text-on-primary px-4 py-3 hover:bg-white/10 transition-all text-body-sm font-body-sm">
           <span className="material-symbols-outlined">logout</span>
           <span>Logout</span>
