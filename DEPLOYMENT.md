@@ -2,44 +2,123 @@
 
 AssetFlow deploys as two independent applications:
 
-- **backend** — Express + TypeScript API, backed by a PostgreSQL (Neon) database
-- **frontend** — Next.js app
+- **Backend** — Express + TypeScript API on Render
+- **Frontend** — Next.js app on Vercel
+- **Database** — PostgreSQL on Neon
 
-Concrete provider configuration (Docker, platform blueprints) is added in a
-later prompt once the API surface is implemented. This document describes the
-build and runtime contract.
+## Quick Start (Docker)
 
-## Backend
+```bash
+# Copy environment template
+cp backend/.env.example .env
 
-Build and run:
+# Edit .env with your credentials, then:
+docker-compose up --build
+```
+
+The backend will be available at `http://localhost:5000` and the frontend at `http://localhost:3000`.
+
+## Backend (Render)
+
+### Automatic Deploy
+
+1. Connect your GitHub repo to Render
+2. The `render.yaml` at the project root defines the service blueprint
+3. Click "New Blueprint Instance" on Render dashboard
+
+### Manual Deploy
 
 ```bash
 cd backend
-npm install
-npm run prisma:generate
+npm ci
+npx prisma generate
 npm run build
-npm start          # runs dist/server.js
+npx prisma migrate deploy
+npm start
 ```
 
-Required environment variables are documented in `backend/.env.example`. The
-service exposes a health check at `GET /api/v1/health`.
+### Required Environment Variables
 
-## Frontend
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `DATABASE_URL` | PostgreSQL connection string | Yes |
+| `JWT_SECRET` | Access token signing key | Yes |
+| `JWT_REFRESH_SECRET` | Refresh token signing key | Yes |
+| `COOKIE_SECRET` | Cookie signing key | Yes |
+| `CORS_ORIGIN` | Frontend URL (comma-separated) | Yes |
+| `GROK_API_KEY` | xAI Grok API key for AI features | No |
+| `NODE_ENV` | `production` | Yes |
+| `PORT` | Server port (default: 5000) | No |
 
-Build and run:
+### Health Check
+
+The backend exposes `GET /api/v1/health` which returns database connectivity, uptime, and memory usage. Use this for load balancer and orchestrator health probes.
+
+### API Documentation
+
+Swagger UI is available at `/api/docs` in non-production environments. The OpenAPI JSON spec is at `/api/docs.json`.
+
+## Frontend (Vercel)
+
+### Automatic Deploy
+
+1. Import the repo on Vercel
+2. Set root directory to `frontend`
+3. Set `NEXT_PUBLIC_API_URL` environment variable
+
+### Manual Deploy
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run build
 npm start
 ```
 
-Set `NEXT_PUBLIC_API_URL` to the deployed backend base URL, for example
-`https://assetflow-api.example.com/api/v1`.
+### Required Environment Variables
 
-## Database
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Backend API base URL (e.g., `https://api.example.com/api/v1`) |
 
-PostgreSQL is provisioned on Neon. The connection string is supplied to the
-backend through `DATABASE_URL`. Prisma manages the schema and migrations from
-`backend/prisma/`.
+## Database (Neon)
+
+1. Create a project on [Neon](https://neon.tech)
+2. Copy the connection string to `DATABASE_URL`
+3. Run migrations: `cd backend && npx prisma migrate deploy`
+4. Seed initial data: `cd backend && npm run prisma:seed`
+
+## Docker
+
+### Backend Only
+
+```bash
+cd backend
+docker build -t assetflow-api .
+docker run -p 5000:5000 --env-file .env assetflow-api
+```
+
+### Frontend Only
+
+```bash
+cd frontend
+docker build -t assetflow-web --build-arg NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1 .
+docker run -p 3000:3000 assetflow-web
+```
+
+### Full Stack
+
+```bash
+docker-compose up --build
+```
+
+## Production Checklist
+
+- [ ] Set strong, unique values for JWT_SECRET, JWT_REFRESH_SECRET, COOKIE_SECRET
+- [ ] Set CORS_ORIGIN to exact frontend domain (not `*`)
+- [ ] Set NODE_ENV=production
+- [ ] Run `npx prisma migrate deploy` before starting
+- [ ] Configure GROK_API_KEY for AI features
+- [ ] Set up monitoring on the /health endpoint
+- [ ] Configure a CDN for static frontend assets (Vercel handles this)
+- [ ] Enable Neon connection pooling for production workloads

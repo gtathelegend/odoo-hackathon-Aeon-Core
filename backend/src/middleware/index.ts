@@ -8,3 +8,4 @@ export { requireRole, requireMinRole, authorize } from './role.middleware';
 export { rateLimiter, createRateLimiter } from './rateLimiter.middleware';
 export { upload, UPLOAD_PATHS } from './upload.middleware';
 export { corsMiddleware } from './cors.middleware';
+export { sanitizeMiddleware } from './sanitize.middleware';
