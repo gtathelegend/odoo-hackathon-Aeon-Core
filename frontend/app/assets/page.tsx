@@ -36,10 +36,10 @@ export default function AssetsPage() {
 
   async function loadAssets() {
     try {
-      const data = await apiClient.get<{ items: Asset[]; total: number }>("/assets", {
+      const data = await apiClient.get<Asset[]>("/assets", {
         query: { page: 1, limit: 25 },
       });
-      setAssets(data.items ?? []);
+      setAssets(Array.isArray(data) ? data : []);
     } catch {
       setAssets([]);
     } finally {

@@ -43,22 +43,14 @@ export default function ActivityPage() {
   async function loadActivities() {
     setLoading(true);
     try {
-      const data = await apiClient.get<{ items: ActivityItem[]; total: number }>("/audit/activity", {
+      const data = await apiClient.get<ActivityItem[]>("/dashboard/activity", {
         query: { page, limit: 30 },
       });
-      setActivities(data.items ?? []);
-      setTotal(data.total ?? 0);
+      const items = Array.isArray(data) ? data : [];
+      setActivities(items);
+      setTotal(items.length >= 30 ? items.length + 1 : items.length);
     } catch {
-      // Fallback: try different endpoint
-      try {
-        const data = await apiClient.get<{ items: ActivityItem[]; total: number }>("/dashboard/activity", {
-          query: { page, limit: 30 },
-        });
-        setActivities(data.items ?? []);
-        setTotal(data.total ?? 0);
-      } catch {
-        setActivities([]);
-      }
+      setActivities([]);
     } finally {
       setLoading(false);
     }

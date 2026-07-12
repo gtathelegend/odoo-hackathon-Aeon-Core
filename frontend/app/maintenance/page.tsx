@@ -41,10 +41,10 @@ export default function MaintenancePage() {
 
   async function loadRequests() {
     try {
-      const data = await apiClient.get<{ items: MaintenanceRequest[]; total: number }>("/maintenance", {
+      const data = await apiClient.get<MaintenanceRequest[]>("/maintenance", {
         query: { page: 1, limit: 25 },
       });
-      setRequests(data.items ?? []);
+      setRequests(Array.isArray(data) ? data : []);
     } catch {
       setRequests([]);
     } finally {

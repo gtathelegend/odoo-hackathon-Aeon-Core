@@ -31,10 +31,10 @@ export default function AuditPage() {
 
   async function loadAudits() {
     try {
-      const data = await apiClient.get<{ items: AuditCycle[]; total: number }>("/audit", {
+      const data = await apiClient.get<AuditCycle[]>("/audit", {
         query: { page: 1, limit: 25 },
       });
-      setAudits(data.items ?? []);
+      setAudits(Array.isArray(data) ? data : []);
     } catch {
       setAudits([]);
     } finally {

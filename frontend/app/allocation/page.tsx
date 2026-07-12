@@ -32,10 +32,10 @@ export default function AllocationPage() {
 
   async function loadAllocations() {
     try {
-      const data = await apiClient.get<{ items: Allocation[]; total: number }>("/allocation", {
+      const data = await apiClient.get<Allocation[]>("/allocation", {
         query: { page: 1, limit: 25 },
       });
-      setAllocations(data.items ?? []);
+      setAllocations(Array.isArray(data) ? data : []);
     } catch {
       setAllocations([]);
     } finally {

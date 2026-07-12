@@ -34,10 +34,10 @@ export default function BookingPage() {
 
   async function loadBookings() {
     try {
-      const data = await apiClient.get<{ items: Booking[]; total: number }>("/booking", {
+      const data = await apiClient.get<Booking[]>("/booking", {
         query: { page: 1, limit: 25 },
       });
-      setBookings(data.items ?? []);
+      setBookings(Array.isArray(data) ? data : []);
     } catch {
       setBookings([]);
     } finally {
